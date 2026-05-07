@@ -1,0 +1,47 @@
+test_world_layout_exists :: proc() {
+    Test.assert_entity_exists("grass baseplate exists", "Grass_Baseplate");
+    Test.assert_entity_exists("top left plot exists", "Garden_Plot_Top_Left");
+    Test.assert_entity_exists("top right plot exists", "Garden_Plot_Top_Right");
+    Test.assert_entity_exists("bottom left plot exists", "Garden_Plot_Bottom_Left");
+    Test.assert_entity_exists("bottom right plot exists", "Garden_Plot_Bottom_Right");
+    Test.assert_entity_exists("seed shop exists", "Seed_Shop");
+    Test.assert_entity_exists("gear shop exists", "Gear_Shop");
+    Test.assert_entity_exists("sell shop exists", "Sell_Shop");
+}
+
+test_gear_shop_buy_gear :: proc() {
+    Test.teleport({7.0, -2.9});
+    Test.wait_seconds(1.0);
+    Test.assert_can_interact("can use gear shop", "Gear_Shop");
+    Test.interact_with("Gear_Shop");
+    Test.wait_seconds(1.0);
+    Test.assert_player_has_item("bought garden gear", "garden_gear");
+}
+
+test_sell_shop_sells_seeds :: proc() {
+    Test.teleport({7.0, 2.0});
+    Test.wait_seconds(1.0);
+    Test.interact_with("Seed_Shop");
+    Test.wait_seconds(0.5);
+    Test.click_button("buy_seed_0");
+    Test.wait_seconds(0.5);
+    Test.assert_player_has_item("has seed before sell", "seed_wheat");
+    Test.teleport({12.0, 0.0});
+    Test.wait_seconds(1.0);
+    Test.assert_can_interact("can use sell shop", "Sell_Shop");
+    Test.interact_with("Sell_Shop");
+    Test.wait_seconds(1.0);
+    Test.assert_player_item_count("sold all wheat seeds", "seed_wheat", 0);
+}
+
+test_seed_shop_ui_screenshot :: proc() {
+    Test.teleport({7.0, 2.0});
+    Test.wait_seconds(1.0);
+    Test.interact_with("Seed_Shop");
+    Test.wait_seconds(0.5);
+    Test.screenshot("seed_shop_open");
+    Test.assert_can_interact("seed shop still in range", "Seed_Shop");
+}
+
+
+

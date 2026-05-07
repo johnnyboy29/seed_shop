@@ -1,0 +1,52 @@
+Seed_Shop_Interactable :: class : Interactable {
+    stock: [10]s64;
+    refresh_count: s64;
+    next_refresh_time: float;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Seed Shop");
+        this.required_hold_time = 0.0;
+        refresh_count = 0;
+        refresh_stock();
+    }
+
+    ao_update :: method(dt: float) {
+        if get_time() >= next_refresh_time {
+            refresh_stock();
+        }
+    }
+
+    refresh_stock :: method() {
+        refresh_count += 1;
+        rng := rng_root_seed() + refresh_count.(u64) * 7919;
+        for i: 0..SEED_COUNT - 1 {
+            chance := rng_range_int(ref rng, 1, 100);
+            if chance <= seed_chance_percent(i) {
+                max_stock := seed_max_stock(i).(int);
+                min_stock: int = 1;
+                if i <= 1 min_stock = 8;
+                if i >= 2 && i <= 4 min_stock = 3;
+                stock[i] = rng_range_int(ref rng, min_stock, max_stock).(s64);
+            } else {
+                stock[i] = 0;
+            }
+        }
+        next_refresh_time = get_time() + SEED_REFRESH_SECONDS;
+    }
+
+    seconds_until_refresh :: method() -> float {
+        remaining := next_refresh_time - get_time();
+        if remaining < 0 return 0;
+        return remaining;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        player.active_seed_shop = this;
+        player.show_seed_shop = true;
+    }
+}

@@ -1,0 +1,292 @@
+import "core:ao"
+
+SEED_COUNT :: 10;
+SEED_REFRESH_SECONDS :: 300.0;
+STARTING_COINS :: 250;
+GEAR_COST :: 50;
+
+seed_definitions: [10]Item_Definition;
+garden_gear_definition: Item_Definition;
+coin_icon: Texture_Asset;
+purchase_sfx: SFX_Asset;
+coin_sfx: SFX_Asset;
+
+// Game wide systems
+ao_before_scene_load :: proc() {
+    Scene.set_player_inventory_capacity(24);
+
+    coin_icon = get_asset(Texture_Asset, "Gold Coin Icon_d3f0f3.png");
+    purchase_sfx = get_asset(SFX_Asset, "purchase_item_b8876a.wav");
+    coin_sfx = get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+    Economy.register_currency("Coins", coin_icon);
+
+    seed_definitions[0] = Items.register_item_definition({"seed_wheat", "Wheat Seed", get_asset(Texture_Asset, "Seed Packet_ac97dc.png"), 99, .COMMON});
+    seed_definitions[1] = Items.register_item_definition({"seed_corn", "Corn Seed", get_asset(Texture_Asset, "seed_packet_corn_e50055.png"), 99, .COMMON});
+    seed_definitions[2] = Items.register_item_definition({"seed_tomato", "Tomato Seed", get_asset(Texture_Asset, "seed_packet_tomato_3b8b05.png"), 99, .UNCOMMON});
+    seed_definitions[3] = Items.register_item_definition({"seed_carrot", "Carrot Seed", get_asset(Texture_Asset, "seed_bag_carrot_dbd47f.png"), 99, .UNCOMMON});
+    seed_definitions[4] = Items.register_item_definition({"seed_lettuce", "Lettuce Seed", get_asset(Texture_Asset, "lettuce_sprout_04c062.png"), 99, .UNCOMMON});
+    seed_definitions[5] = Items.register_item_definition({"seed_sunflower", "Sunflower Seed", get_asset(Texture_Asset, "sunflower_seed_bag_6f73b7.png"), 99, .EPIC});
+    seed_definitions[6] = Items.register_item_definition({"seed_garlic", "Garlic Seed", get_asset(Texture_Asset, "Garlic_75c8ca.png"), 99, .EPIC});
+    seed_definitions[7] = Items.register_item_definition({"seed_crystal_leaf", "Crystal Leaf Seed", get_asset(Texture_Asset, "leaf_547501.png"), 99, .LEGENDARY});
+    seed_definitions[8] = Items.register_item_definition({"seed_star", "Star Seed", get_asset(Texture_Asset, "Seeds_02c675.png"), 99, .LEGENDARY});
+    seed_definitions[9] = Items.register_item_definition({"seed_moon", "Moon Seed", get_asset(Texture_Asset, "seed2_91ff52.png"), 99, .MYTHIC});
+
+    garden_gear_definition = Items.register_item_definition({"garden_gear", "Garden Gear", get_asset(Texture_Asset, "seed bag_809373.png"), 1, .UNCOMMON});
+}
+
+ao_start :: proc() {
+
+}
+
+ao_update :: proc(dt: float) {
+
+}
+
+ao_late_update :: proc(dt: float) {
+
+}
+
+play_shop_sfx :: proc(asset: SFX_Asset, follow: Entity, volume: float) {
+    if asset == null return;
+    desc := SFX.default_sfx_desc();
+    if #alive(follow) {
+        desc.entity_to_follow = follow.id;
+    }
+    desc.volume = volume;
+    desc.speed_perturb = 0.08;
+    SFX.play(asset, desc);
+}
+
+seed_tier_label :: proc(index: s64) -> string {
+    switch index {
+        case 0, 1: return "Common";
+        case 2, 3, 4: return "Uncommon";
+        case 5, 6: return "Epic";
+        case 7, 8: return "Legendary";
+        default: return "Mythical";
+    }
+}
+
+seed_price :: proc(index: s64) -> s64 {
+    switch index {
+        case 0: return 10;
+        case 1: return 12;
+        case 2: return 25;
+        case 3: return 30;
+        case 4: return 35;
+        case 5: return 75;
+        case 6: return 90;
+        case 7: return 180;
+        case 8: return 220;
+        default: return 500;
+    }
+}
+
+seed_sell_value :: proc(index: s64) -> s64 {
+    return seed_price(index) / 2;
+}
+
+seed_max_stock :: proc(index: s64) -> s64 {
+    switch index {
+        case 0, 1: return 14;
+        case 2, 3, 4: return 8;
+        case 5, 6: return 4;
+        case 7, 8: return 2;
+        default: return 1;
+    }
+}
+
+seed_chance_percent :: proc(index: s64) -> int {
+    switch index {
+        case 0, 1: return 100;
+        case 2, 3, 4: return 75;
+        case 5, 6: return 45;
+        case 7, 8: return 25;
+        default: return 12;
+    }
+}
+
+get_seed_index_from_definition :: proc(defn: Item_Definition) -> s64 {
+    for i: 0..SEED_COUNT - 1 {
+        if defn == seed_definitions[i] return i;
+    }
+    return -1;
+}
+
+buy_seed_from_shop :: proc(player: Player, shop: Seed_Shop_Interactable, index: s64) {
+    if !#alive(shop) return;
+    if index < 0 || index >= SEED_COUNT return;
+
+    if shop.stock[index] <= 0 {
+        Notifier.notify(player, "Sold out until refresh");
+        return;
+    }
+
+    cost := seed_price(index);
+    if !Economy.can_withdraw_currency(player, "Coins", cost) {
+        Notifier.notify(player, "Need % coins", {cost});
+        return;
+    }
+
+    item := Items.create_item_instance(seed_definitions[index], 1);
+    will_destroy: bool;
+    if !Items.can_move_item_to_inventory(item, player.default_inventory, ref will_destroy) {
+        Items.destroy_item_instance(item);
+        Notifier.notify(player, "Inventory full");
+        return;
+    }
+
+    Economy.withdraw_currency(player, "Coins", cost);
+    Items.move_item_to_inventory(item, player.default_inventory);
+    shop.stock[index] -= 1;
+    play_shop_sfx(purchase_sfx, shop.entity, 0.45);
+    Notifier.notify(player, "Bought %", {seed_definitions[index].get_name()});
+}
+
+sell_all_seeds :: proc(player: Player, shop_entity: Entity) {
+    total: s64 = 0;
+    sold: s64 = 0;
+    for slot: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(slot);
+        if item == null continue;
+        defn := item.get_definition();
+        seed_index := get_seed_index_from_definition(defn);
+        if seed_index < 0 continue;
+
+        qty := item.quantity;
+        total += qty * seed_sell_value(seed_index);
+        sold += qty;
+        Items.destroy_item_instance(item);
+    }
+
+    if total <= 0 {
+        Notifier.notify(player, "No seeds to sell");
+        return;
+    }
+
+    Economy.deposit_currency(player, "Coins", total);
+    play_shop_sfx(coin_sfx, shop_entity, 0.55);
+    Notifier.notify(player, "+% coins", {total});
+}
+
+buy_garden_gear :: proc(player: Player, shop_entity: Entity) {
+    if !Economy.can_withdraw_currency(player, "Coins", GEAR_COST) {
+        Notifier.notify(player, "Need % coins", {GEAR_COST});
+        return;
+    }
+
+    item := Items.create_item_instance(garden_gear_definition, 1);
+    will_destroy: bool;
+    if !Items.can_move_item_to_inventory(item, player.default_inventory, ref will_destroy) {
+        Items.destroy_item_instance(item);
+        Notifier.notify(player, "Inventory full");
+        return;
+    }
+
+    Economy.withdraw_currency(player, "Coins", GEAR_COST);
+    Items.move_item_to_inventory(item, player.default_inventory);
+    play_shop_sfx(purchase_sfx, shop_entity, 0.45);
+    Notifier.notify(player, "Bought gear");
+}
+
+// Per player state
+Player :: class : Player_Base {
+    show_seed_shop: bool;
+    active_seed_shop: Seed_Shop_Interactable;
+
+    ao_start :: method() {
+        balance := Economy.get_balance(this, "Coins");
+        if balance < STARTING_COINS {
+            Economy.deposit_currency(this, "Coins", STARTING_COINS - balance);
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        // Every frame
+    }
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            if show_seed_shop && #alive(active_seed_shop) {
+                draw_seed_shop(this, active_seed_shop);
+            }
+
+            options := Inventory_Draw_Options.default();
+            options.hotbar_item_count = 5;
+            options.enable_use_from_hotbar = false;
+            options.scroll_item_selection = true;
+            options.keyboard_item_selection = true;
+            Items.draw_hotbar(this, default_inventory, options);
+        }
+    }
+
+    ao_end :: method() {
+        // On destroy
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+        // Called on the client after applying a state sync from the server
+    }
+}
+
+draw_seed_shop :: proc(player: Player, shop: Seed_Shop_Interactable) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 20));
+
+    shell := UIK.panel_modal(.BROWN, 8.0, {16, 16, 16, 16});
+    UIK.panel_begin(shell);
+
+    exit_handle := UIK.title_area(UIK.title_area_desc("Seed Shop"));
+
+    balance_text := format_string("Coins: %   Refresh: %s", {Economy.get_balance(player, "Coins"), shop.seconds_until_refresh().(s64)});
+    UIK.text(balance_text, UIK.text_body());
+
+    list_panel := UIK.layout_column();
+    list_panel.width = UIK.flex(1);
+    list_panel.height = UIK.flex(1);
+    list_panel.gap = 6;
+    UIK.panel_begin(list_panel);
+
+    buy_handles: [10]UIK.Interact_Handle;
+    for i: 0..SEED_COUNT - 1 {
+        bg := UIK.Panel_Background_Kind.BUTTON_BASIC_GREEN;
+        action_text := "Buy";
+        if shop.stock[i] <= 0 {
+            bg = .BUTTON_BASIC_GREY;
+            action_text = "Sold Out";
+        }
+
+        btn_desc := UIK.widget_desc_button_auto_default(bg);
+        btn_desc.panel.width = UIK.flex(1);
+        btn_desc.panel.height = UIK.pixels(62);
+
+        label := format_string("% | % | Stock % | %c | %", {seed_definitions[i].get_name(), seed_tier_label(i), shop.stock[i], seed_price(i), action_text});
+        buy_handles[i] = UIK.button(format_string("buy_seed_%", {i}), label, btn_desc);
+    }
+
+    UIK.panel_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.show_seed_shop = false;
+    }
+    for i: 0..SEED_COUNT - 1 {
+        if UIK.clicked(buy_handles[i]) {
+            buy_seed_from_shop(player, shop, i);
+        }
+    }
+}
+
+
+
+
+
+

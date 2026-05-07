@@ -1,0 +1,15 @@
+Gear_Shop_Interactable :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Buy Gear");
+        this.required_hold_time = 0.0;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        buy_garden_gear(player, entity);
+    }
+}
