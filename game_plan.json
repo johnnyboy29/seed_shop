@@ -1,0 +1,122 @@
+{
+  "game": "Garden Seeds",
+  "description": "A multiplayer top-down farming game where players buy seeds of varying rarity from a gear shop, plant them in shared garden plots, watch them grow, and sell the harvest at the sell shop for coins.",
+  "layout": {
+    "viewport": "~24 x 14 world units",
+    "gardens": "2x2 grid center of map — top-left (-4,3), top-right (4,3), bottom-left (-4,-3), bottom-right (4,-3)",
+    "seed_shop": "left side of map (-10, 0)",
+    "sell_shop": "right side of map (10, 0)"
+  },
+  "seeds": [
+    {"name": "Carrot Seed",       "rarity": "common",    "stock": 20, "buy": 10,   "sell": 25,   "grow_secs": 20,  "skin": "carrot"},
+    {"name": "Potato Seed",       "rarity": "common",    "stock": 20, "buy": 15,   "sell": 35,   "grow_secs": 25,  "skin": "potato"},
+    {"name": "Corn Seed",         "rarity": "uncommon",  "stock": 10, "buy": 30,   "sell": 80,   "grow_secs": 45,  "skin": "corn"},
+    {"name": "Tomato Seed",       "rarity": "uncommon",  "stock": 10, "buy": 40,   "sell": 100,  "grow_secs": 50,  "skin": "tomato"},
+    {"name": "Sunflower Seed",    "rarity": "uncommon",  "stock": 10, "buy": 50,   "sell": 130,  "grow_secs": 60,  "skin": "sunflower"},
+    {"name": "Magic Bean",        "rarity": "epic",      "stock": 5,  "buy": 100,  "sell": 300,  "grow_secs": 120, "skin": "carrot"},
+    {"name": "Crystal Berry",     "rarity": "epic",      "stock": 5,  "buy": 150,  "sell": 400,  "grow_secs": 150, "skin": "corn"},
+    {"name": "Dragon Fruit",      "rarity": "legendary", "stock": 2,  "buy": 400,  "sell": 1000, "grow_secs": 300, "skin": "tomato"},
+    {"name": "Phoenix Pepper",    "rarity": "legendary", "stock": 2,  "buy": 500,  "sell": 1200, "grow_secs": 350, "skin": "sunflower"},
+    {"name": "Celestial Bloom",   "rarity": "mythical",  "stock": 1,  "buy": 2000, "sell": 6000, "grow_secs": 600, "skin": "carrot"}
+  ],
+  "scene_epics": [
+    {
+      "name": "Grass Baseplate",
+      "status": "pending",
+      "tasks": [
+        {"name": "Tile grassflor_3 to cover full viewport (4 tiles at scale 7)", "done": false},
+        {"name": "Screenshot and verify no gaps", "done": false}
+      ],
+      "verified": false
+    },
+    {
+      "name": "Garden Plots",
+      "status": "pending",
+      "tasks": [
+        {"name": "Place 4 garden_bed spine entities in 2x2 grid", "done": false},
+        {"name": "Add fence_back_2 border around garden area", "done": false},
+        {"name": "Screenshot and verify scale relative to player", "done": false}
+      ],
+      "verified": false
+    },
+    {
+      "name": "Shops",
+      "status": "pending",
+      "tasks": [
+        {"name": "Place seed shop (shop_building) on left side with Seed Shop label", "done": false},
+        {"name": "Place sell shop (shop_building) on right side with Sell label", "done": false},
+        {"name": "Add arrow signs pointing to shops", "done": false}
+      ],
+      "verified": false
+    },
+    {
+      "name": "Paths",
+      "status": "pending",
+      "tasks": [
+        {"name": "Tile dirt_path_horizontal from gardens to seed shop", "done": false},
+        {"name": "Tile dirt_path_horizontal from gardens to sell shop", "done": false}
+      ],
+      "verified": false
+    }
+  ],
+  "script_epics": [
+    {
+      "name": "Economy & Seed Definitions",
+      "status": "pending",
+      "tasks": [
+        {"name": "Register Coins currency with Economy system", "done": false},
+        {"name": "Define SEED_DEFS array with all 10 seeds (name, rarity, stock, buy, sell, grow_secs, skin)", "done": false},
+        {"name": "Give each player 50 starting coins on join", "done": false}
+      ],
+      "gate_test": "test_gate_economy_seeds",
+      "gate_passed": false
+    },
+    {
+      "name": "Seed Shop & Stock System",
+      "status": "pending",
+      "tasks": [
+        {"name": "Garden_Plot interactable component — track owner, seed index, plant_time, harvest ready", "done": false},
+        {"name": "Seed_Shop interactable: open UIK shop UI listing all 10 seeds with rarity color + current stock", "done": false},
+        {"name": "5-minute global stock refresh timer — refill all stock to max", "done": false},
+        {"name": "Purchase flow: deduct coins, give seed item via inventory, decrement stock", "done": false}
+      ],
+      "gate_test": "test_gate_seed_shop",
+      "gate_passed": false
+    },
+    {
+      "name": "Garden Plot Planting & Growth",
+      "status": "pending",
+      "tasks": [
+        {"name": "Garden_Plot interactable: if player has a seed in hand, plant it (lock plot to this player)", "done": false},
+        {"name": "Drive garden_bed Spine through empty→mound→sprout→full animations as time passes", "done": false},
+        {"name": "Show floating timer above plot while growing (world-space UI)", "done": false},
+        {"name": "When fully grown, pulse garden_bed and show harvest prompt", "done": false}
+      ],
+      "gate_test": "test_gate_planting_growth",
+      "gate_passed": false
+    },
+    {
+      "name": "Harvest & Sell",
+      "status": "pending",
+      "tasks": [
+        {"name": "Interact with fully grown plot: harvest into inventory, reset plot to empty", "done": false},
+        {"name": "Sell_Shop interactable: sell all harvested crops from inventory for coins", "done": false},
+        {"name": "Coin fly-up animation (Gold Coin spine: drop→pick_up) when earning coins", "done": false},
+        {"name": "Play harvest and sell SFX", "done": false}
+      ],
+      "gate_test": "test_gate_harvest_sell",
+      "gate_passed": false
+    },
+    {
+      "name": "HUD",
+      "status": "pending",
+      "tasks": [
+        {"name": "Display coin balance top-right corner", "done": false},
+        {"name": "Show shop stock refresh countdown", "done": false},
+        {"name": "Show held seed name when carrying a seed", "done": false}
+      ],
+      "gate_test": "test_gate_hud",
+      "gate_passed": false
+    }
+  ]
+}

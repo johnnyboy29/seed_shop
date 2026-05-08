@@ -1,0 +1,30 @@
+6be977dc99c0d828.png
+	size: 1024, 1024
+	filter: Linear, Linear
+coins/coin1
+	bounds: 6, 783, 229, 230
+	offsets: 3, 3, 234, 236
+coins/coin2
+	bounds: 6, 546, 217, 231
+	offsets: 6, 3, 225, 237
+coins/coin3
+	bounds: 6, 70, 166, 233
+	offsets: 8, 3, 177, 239
+coins/coin4
+	bounds: 229, 542, 74, 235
+	offsets: 3, 3, 83, 241
+coins/coin5
+	bounds: 178, 70, 166, 233
+	offsets: 1, 3, 170, 239
+coins/coin6
+	bounds: 6, 309, 217, 231
+	offsets: 3, 3, 223, 237
+coins/shadow
+	bounds: 6, 11, 194, 53
+	offsets: 1, 1, 196, 55
+coins/sparkle
+	bounds: 241, 915, 88, 98
+	offsets: 1, 1, 90, 100
+coins/sparkle2
+	bounds: 206, 6, 54, 58
+	offsets: 1, 1, 56, 60

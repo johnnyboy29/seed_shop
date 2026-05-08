@@ -1,0 +1,262 @@
+Seed_Definition :: class : Item_Definition {
+    seed_index: s64;
+    grow_secs: float;
+    sell_value: s64;
+    spine_skin: string;
+    rarity_color: v4;
+    max_stock: s64;
+}
+
+Crop_Definition :: class : Item_Definition {
+    seed_index: s64;
+    sell_value: s64;
+}
+
+SEED_COUNT :: 10;
+
+// Mutable globals — initialized in ao_before_scene_load
+seed_item_defs: [SEED_COUNT]Seed_Definition;
+crop_item_defs: [SEED_COUNT]Crop_Definition;
+seed_stock: [SEED_COUNT]s64;
+shop_refresh_timer: float;
+
+SHOP_REFRESH_SECS :: 300.0;
+
+SEED_MAX_STOCK: [SEED_COUNT]s64;
+
+rarity_color_for :: proc(rarity: string) -> v4 {
+    if rarity == "common"    return {0.75, 0.75, 0.75, 1.0};
+    if rarity == "uncommon"  return {0.2,  0.85, 0.2,  1.0};
+    if rarity == "epic"      return {0.55, 0.2,  0.9,  1.0};
+    if rarity == "legendary" return {1.0,  0.6,  0.1,  1.0};
+    if rarity == "mythical"  return {1.0,  0.15, 0.5,  1.0};
+    return {1, 1, 1, 1};
+}
+
+register_seeds :: proc() {
+    // index 0: Carrot (common)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_carrot", "Carrot Seed", icon, 1, .COMMON}, Seed_Definition);
+        d.seed_index = 0; d.grow_secs = 20; d.sell_value = 25;
+        d.spine_skin = "carrot"; d.max_stock = 20;
+        d.rarity_color = rarity_color_for("common");
+        seed_item_defs[0] = d;
+        SEED_MAX_STOCK[0] = 20;
+
+        ci := Items.register_item_definition({"crop_carrot", "Carrot", icon, 99, .COMMON}, Crop_Definition);
+        ci.seed_index = 0; ci.sell_value = 25;
+        crop_item_defs[0] = ci;
+    }
+    // index 1: Potato (common)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_potato", "Potato Seed", icon, 1, .COMMON}, Seed_Definition);
+        d.seed_index = 1; d.grow_secs = 25; d.sell_value = 35;
+        d.spine_skin = "potato"; d.max_stock = 20;
+        d.rarity_color = rarity_color_for("common");
+        seed_item_defs[1] = d;
+        SEED_MAX_STOCK[1] = 20;
+
+        ci := Items.register_item_definition({"crop_potato", "Potato", icon, 99, .COMMON}, Crop_Definition);
+        ci.seed_index = 1; ci.sell_value = 35;
+        crop_item_defs[1] = ci;
+    }
+    // index 2: Corn (uncommon)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_corn", "Corn Seed", icon, 1, .UNCOMMON}, Seed_Definition);
+        d.seed_index = 2; d.grow_secs = 45; d.sell_value = 80;
+        d.spine_skin = "corn"; d.max_stock = 10;
+        d.rarity_color = rarity_color_for("uncommon");
+        seed_item_defs[2] = d;
+        SEED_MAX_STOCK[2] = 10;
+
+        ci := Items.register_item_definition({"crop_corn", "Corn", icon, 99, .UNCOMMON}, Crop_Definition);
+        ci.seed_index = 2; ci.sell_value = 80;
+        crop_item_defs[2] = ci;
+    }
+    // index 3: Tomato (uncommon)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_tomato", "Tomato Seed", icon, 1, .UNCOMMON}, Seed_Definition);
+        d.seed_index = 3; d.grow_secs = 50; d.sell_value = 100;
+        d.spine_skin = "tomato"; d.max_stock = 10;
+        d.rarity_color = rarity_color_for("uncommon");
+        seed_item_defs[3] = d;
+        SEED_MAX_STOCK[3] = 10;
+
+        ci := Items.register_item_definition({"crop_tomato", "Tomato", icon, 99, .UNCOMMON}, Crop_Definition);
+        ci.seed_index = 3; ci.sell_value = 100;
+        crop_item_defs[3] = ci;
+    }
+    // index 4: Sunflower (uncommon)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_sunflower", "Sunflower Seed", icon, 1, .UNCOMMON}, Seed_Definition);
+        d.seed_index = 4; d.grow_secs = 60; d.sell_value = 130;
+        d.spine_skin = "sunflower"; d.max_stock = 10;
+        d.rarity_color = rarity_color_for("uncommon");
+        seed_item_defs[4] = d;
+        SEED_MAX_STOCK[4] = 10;
+
+        ci := Items.register_item_definition({"crop_sunflower", "Sunflower", icon, 99, .UNCOMMON}, Crop_Definition);
+        ci.seed_index = 4; ci.sell_value = 130;
+        crop_item_defs[4] = ci;
+    }
+    // index 5: Magic Bean (epic)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_magicbean", "Magic Bean", icon, 1, .EPIC}, Seed_Definition);
+        d.seed_index = 5; d.grow_secs = 120; d.sell_value = 300;
+        d.spine_skin = "carrot"; d.max_stock = 5;
+        d.rarity_color = rarity_color_for("epic");
+        seed_item_defs[5] = d;
+        SEED_MAX_STOCK[5] = 5;
+
+        ci := Items.register_item_definition({"crop_magicbean", "Magic Bean Crop", icon, 99, .EPIC}, Crop_Definition);
+        ci.seed_index = 5; ci.sell_value = 300;
+        crop_item_defs[5] = ci;
+    }
+    // index 6: Crystal Berry (epic)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_crystalberry", "Crystal Berry", icon, 1, .EPIC}, Seed_Definition);
+        d.seed_index = 6; d.grow_secs = 150; d.sell_value = 400;
+        d.spine_skin = "corn"; d.max_stock = 5;
+        d.rarity_color = rarity_color_for("epic");
+        seed_item_defs[6] = d;
+        SEED_MAX_STOCK[6] = 5;
+
+        ci := Items.register_item_definition({"crop_crystalberry", "Crystal Berry Crop", icon, 99, .EPIC}, Crop_Definition);
+        ci.seed_index = 6; ci.sell_value = 400;
+        crop_item_defs[6] = ci;
+    }
+    // index 7: Dragon Fruit (legendary)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_dragonfruit", "Dragon Fruit Seed", icon, 1, .LEGENDARY}, Seed_Definition);
+        d.seed_index = 7; d.grow_secs = 300; d.sell_value = 1000;
+        d.spine_skin = "tomato"; d.max_stock = 2;
+        d.rarity_color = rarity_color_for("legendary");
+        seed_item_defs[7] = d;
+        SEED_MAX_STOCK[7] = 2;
+
+        ci := Items.register_item_definition({"crop_dragonfruit", "Dragon Fruit", icon, 99, .LEGENDARY}, Crop_Definition);
+        ci.seed_index = 7; ci.sell_value = 1000;
+        crop_item_defs[7] = ci;
+    }
+    // index 8: Phoenix Pepper (legendary)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_phoenixpepper", "Phoenix Pepper Seed", icon, 1, .LEGENDARY}, Seed_Definition);
+        d.seed_index = 8; d.grow_secs = 350; d.sell_value = 1200;
+        d.spine_skin = "sunflower"; d.max_stock = 2;
+        d.rarity_color = rarity_color_for("legendary");
+        seed_item_defs[8] = d;
+        SEED_MAX_STOCK[8] = 2;
+
+        ci := Items.register_item_definition({"crop_phoenixpepper", "Phoenix Pepper Crop", icon, 99, .LEGENDARY}, Crop_Definition);
+        ci.seed_index = 8; ci.sell_value = 1200;
+        crop_item_defs[8] = ci;
+    }
+    // index 9: Celestial Bloom (mythical)
+    {
+        icon := get_asset(Texture_Asset, "seed_packet_39034f/images/seed_packet.png");
+        d := Items.register_item_definition({"seed_celestialbloom", "Celestial Bloom Seed", icon, 1, .MYTHIC}, Seed_Definition);
+        d.seed_index = 9; d.grow_secs = 600; d.sell_value = 6000;
+        d.spine_skin = "carrot"; d.max_stock = 1;
+        d.rarity_color = rarity_color_for("mythical");
+        seed_item_defs[9] = d;
+        SEED_MAX_STOCK[9] = 1;
+
+        ci := Items.register_item_definition({"crop_celestialbloom", "Celestial Bloom Crop", icon, 99, .MYTHIC}, Crop_Definition);
+        ci.seed_index = 9; ci.sell_value = 6000;
+        crop_item_defs[9] = ci;
+    }
+}
+
+init_stock :: proc() {
+    for i: 0..SEED_COUNT - 1 {
+        seed_stock[i] = SEED_MAX_STOCK[i];
+    }
+    shop_refresh_timer = SHOP_REFRESH_SECS;
+}
+
+tick_shop_refresh :: proc(dt: float) {
+    shop_refresh_timer -= dt;
+    if shop_refresh_timer <= 0 {
+        shop_refresh_timer = SHOP_REFRESH_SECS;
+        for i: 0..SEED_COUNT - 1 {
+            seed_stock[i] = SEED_MAX_STOCK[i];
+        }
+    }
+}
+
+seed_name_for_index :: proc(i: s64) -> string {
+    if i == 0 return "Carrot Seed";
+    if i == 1 return "Potato Seed";
+    if i == 2 return "Corn Seed";
+    if i == 3 return "Tomato Seed";
+    if i == 4 return "Sunflower Seed";
+    if i == 5 return "Magic Bean";
+    if i == 6 return "Crystal Berry";
+    if i == 7 return "Dragon Fruit Seed";
+    if i == 8 return "Phoenix Pepper Seed";
+    return "Celestial Bloom Seed";
+}
+
+rarity_name_for_index :: proc(i: s64) -> string {
+    if i == 0 return "Common";
+    if i == 1 return "Common";
+    if i == 2 return "Uncommon";
+    if i == 3 return "Uncommon";
+    if i == 4 return "Uncommon";
+    if i == 5 return "Epic";
+    if i == 6 return "Epic";
+    if i == 7 return "Legendary";
+    if i == 8 return "Legendary";
+    return "Mythical";
+}
+
+seed_buy_cost :: proc(i: s64) -> s64 {
+    if i == 0 return 10;
+    if i == 1 return 15;
+    if i == 2 return 30;
+    if i == 3 return 40;
+    if i == 4 return 50;
+    if i == 5 return 100;
+    if i == 6 return 150;
+    if i == 7 return 400;
+    if i == 8 return 500;
+    return 2000;
+}
+
+player_held_seed_index :: proc(player: Player) -> s64 {
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type == Seed_Definition {
+            sd := defn.(Seed_Definition);
+            return sd.seed_index;
+        }
+    }
+    return -1;
+}
+
+player_remove_held_seed :: proc(player: Player, seed_index: s64) {
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type == Seed_Definition {
+            sd := defn.(Seed_Definition);
+            if sd.seed_index == seed_index {
+                Items.remove_item_from_inventory(item, player.default_inventory);
+                Items.destroy_item_instance(item);
+                return;
+            }
+        }
+    }
+}

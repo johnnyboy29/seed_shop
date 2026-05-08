@@ -1,0 +1,26 @@
+39034f76f5dc1126.png
+	size: 908, 908
+	filter: Linear, Linear
+VFX/Sparkles/Sparkle(1)
+	bounds: 2, 812, 94, 94
+	offsets: 0, 0, 95, 95
+misc/seed_packet/seed_packet_carrot
+	bounds: 98, 750, 156, 160
+	offsets: 1, 1, 158, 162
+	rotate: 90
+misc/seed_packet/seed_packet_corn
+	bounds: 260, 750, 156, 160
+	offsets: 1, 1, 158, 162
+	rotate: 90
+misc/seed_packet/seed_packet_potato
+	bounds: 422, 750, 156, 160
+	offsets: 1, 1, 158, 162
+	rotate: 90
+misc/seed_packet/seed_packet_sunflower
+	bounds: 584, 750, 156, 160
+	offsets: 1, 1, 158, 162
+	rotate: 90
+misc/seed_packet/seed_packet_tomato
+	bounds: 746, 750, 156, 160
+	offsets: 1, 1, 158, 162
+	rotate: 90

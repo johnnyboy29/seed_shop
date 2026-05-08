@@ -1,0 +1,60 @@
+f3d2b27ebc082725.png
+	size: 292, 832
+	filter: Linear, Linear
+wheat/premium_wheat_1
+	bounds: 6, 715, 109, 199
+	rotate: 90
+wheat/premium_wheat_1_cut_bottom
+	bounds: 6, 183, 108, 142
+	offsets: 1, 1, 110, 143
+	rotate: 90
+wheat/premium_wheat_1_cut_top
+	bounds: 154, 61, 57, 100
+	offsets: 1, 1, 59, 102
+	rotate: 90
+wheat/premium_wheat_2
+	bounds: 197, 306, 87, 164
+wheat/premium_wheat_2_cut_bottom
+	bounds: 176, 215, 85, 110
+	offsets: 1, 1, 87, 111
+	rotate: 90
+wheat/premium_wheat_2_cut_top
+	bounds: 112, 13, 42, 81
+	offsets: 1, 1, 44, 82
+	rotate: 90
+wheat/wheat_1
+	bounds: 6, 600, 109, 199
+	rotate: 90
+wheat/wheat_1_cut_bottom
+	bounds: 6, 69, 108, 142
+	offsets: 1, 1, 110, 143
+	rotate: 90
+wheat/wheat_1_cut_top
+	bounds: 6, 6, 57, 100
+	offsets: 1, 1, 59, 102
+	rotate: 90
+wheat/wheat_2
+	bounds: 6, 297, 87, 164
+	rotate: 90
+wheat/wheat_2_cut_bottom
+	bounds: 154, 124, 85, 110
+	offsets: 1, 1, 87, 111
+	rotate: 90
+wheat/wheat_2_cut_top
+	bounds: 199, 13, 42, 81
+	offsets: 1, 1, 44, 82
+	rotate: 90
+wheat/wheat_earth_1
+	bounds: 6, 390, 176, 67
+	offsets: 1, 1, 178, 69
+wheat/wheat_earth_2
+	bounds: 211, 476, 166, 70
+	offsets: 1, 1, 168, 72
+	rotate: 90
+wheat/wheat_earth_3
+	bounds: 211, 648, 176, 73
+	offsets: 1, 1, 178, 75
+	rotate: 90
+wheat/wheat_earth_shadow
+	bounds: 6, 463, 185, 131
+	offsets: 1, 1, 187, 133

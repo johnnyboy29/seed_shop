@@ -1,0 +1,129 @@
+Seed_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Seed Shop");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        if player.is_local_or_server() {
+            player.seed_shop_open = true;
+        }
+    }
+}
+
+draw_seed_shop_ui :: proc(player: Player) {
+    if !player.seed_shop_open return;
+
+    UIK.begin(UIK.modal(UIK.rect_window(), 15));
+
+    shell := UIK.panel_modal(.BLACK);
+    shell.gap = 0;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Seed Shop");
+    exit_handle := UIK.title_area(title_desc);
+
+    // Refresh countdown
+    mins := shop_refresh_timer.(s64) / 60;
+    secs := shop_refresh_timer.(s64) % 60;
+    refresh_str := format_string("Stock refreshes in %:%", {mins, secs});
+    UIK.text(refresh_str, UIK.text_body());
+
+    content := UIK.layout_column();
+    content.width = UIK.flex(1);
+    content.height = UIK.flex(1);
+    content.padding = v4{8, 8, 8, 8};
+    content.gap = 6;
+    UIK.list_begin("seed_shop_list", content);
+
+    buy_handles: [SEED_COUNT]UIK.Interact_Handle;
+    for i: 0..SEED_COUNT - 1 {
+        def := seed_item_defs[i];
+        stock := seed_stock[i];
+        cost := seed_buy_cost(i.(s64));
+        rarity := rarity_name_for_index(i.(s64));
+        rcolor := def.rarity_color;
+
+        row := UIK.layout_row(UIK.flex(1), UIK.pixels(64), 8);
+        row.cross_align = .CENTER;
+        row.padding = v4{8, 6, 8, 6};
+        UIK.panel_begin(row);
+
+        // Rarity dot
+        dot_panel := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        dot_panel.width = UIK.pixels(12);
+        dot_panel.height = UIK.pixels(12);
+        UIK.panel_begin(dot_panel);
+        UIK.panel_end();
+
+        // Name + rarity
+        info := UIK.layout_column();
+        info.width = UIK.flex(1);
+        info.height = UIK.fit();
+        info.gap = 2;
+        UIK.panel_begin(info);
+        UIK.text(def.get_name(), UIK.text_button());
+        UIK.text(rarity, UIK.text_body());
+        UIK.panel_end();
+
+        // Stock
+        UIK.text(format_string("x%", {stock}), UIK.text_body());
+
+        UIK.spacer(UIK.pixels(8), UIK.pixels(1));
+
+        // Buy button
+        if stock > 0 {
+            btn_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+            btn_desc.panel.width = UIK.pixels(120);
+            btn_desc.panel.height = UIK.pixels(48);
+            buy_handles[i] = UIK.button(format_string("buy_seed_%", {i}), format_string("Buy %c", {cost}), btn_desc);
+        } else {
+            btn_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_GREY);
+            btn_desc.panel.width = UIK.pixels(120);
+            btn_desc.panel.height = UIK.pixels(48);
+            buy_handles[i] = UIK.button(format_string("buy_seed_%", {i}), "Sold Out", btn_desc);
+        }
+
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.seed_shop_open = false;
+    }
+
+    for i: 0..SEED_COUNT - 1 {
+        if buy_handles[i].generation > 0 && UIK.clicked(buy_handles[i]) {
+            idx := i.(s64);
+            stock := seed_stock[idx];
+            if stock <= 0 {
+                Notifier.notify(player, "Sold out! Come back after the shop refreshes.");
+            } else {
+                cost := seed_buy_cost(idx);
+                if !Economy.can_withdraw_currency(player, "Coins", cost) {
+                    Notifier.notify(player, format_string("Need % coins!", {cost}));
+                } else {
+                    room := Items.calculate_room_in_inventory_for_item(seed_item_defs[idx], player.default_inventory);
+                    if room <= 0 {
+                        Notifier.notify(player, "Inventory full!");
+                    } else {
+                        Economy.withdraw_currency(player, "Coins", cost);
+                        seed_stock[idx] -= 1;
+                        new_item := Items.create_item_instance(seed_item_defs[idx], 1);
+                        will_destroy: bool;
+                        if Items.can_move_item_to_inventory(new_item, player.default_inventory, ref will_destroy) {
+                            Items.move_item_to_inventory(new_item, player.default_inventory);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

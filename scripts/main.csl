@@ -1,0 +1,95 @@
+import "core:ao"
+
+ao_before_scene_load :: proc() {
+    coin_icon := get_asset(Texture_Asset, "Gold Coin_6be977/images/Gold Coin.png");
+    Economy.register_currency("Coins", coin_icon);
+    register_seeds();
+}
+
+ao_start :: proc() {
+    init_stock();
+}
+
+ao_update :: proc(dt: float) {
+    tick_shop_refresh(dt);
+}
+
+ao_late_update :: proc(dt: float) {
+}
+
+Player :: class : Player_Base {
+    seed_shop_open: bool;
+    sell_shop_open: bool;
+
+    ao_start :: method() {
+        Economy.deposit_currency(this, "Coins", 50);
+        Items.set_capacity(default_inventory, 20);
+    }
+
+    ao_update :: method(dt: float) {
+    }
+
+    ao_late_update :: method(dt: float) {
+        if !is_local_or_server() return;
+
+        draw_hud(this);
+
+        if seed_shop_open {
+            draw_seed_shop_ui(this);
+        }
+
+        options := Inventory_Draw_Options.default();
+        options.hotbar_item_count = 6;
+        options.enable_use_from_hotbar = false;
+        options.scroll_item_selection = true;
+        options.keyboard_item_selection = true;
+        Items.draw_hotbar(this, default_inventory, options);
+    }
+
+    ao_end :: method() {
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+    }
+}
+
+draw_hud :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+
+    bar := UIK.layout_row();
+    bar.width = UIK.flex(1);
+    bar.height = UIK.flex(1);
+    bar.padding = v4{8, 16, 8, 16};
+    bar.gap = 16;
+    bar.cross_align = .CENTER;
+    UIK.panel_begin(bar);
+
+    // Coin balance
+    coin_icon := get_asset(Texture_Asset, "Gold Coin_6be977/images/Gold Coin.png");
+    UIK.currency(coin_icon, Economy.get_balance(player, "Coins"), UIK.text_title());
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    // Shop refresh countdown
+    mins := shop_refresh_timer.(s64) / 60;
+    secs := shop_refresh_timer.(s64) % 60;
+    UIK.text(format_string("Shop refresh: %:%", {mins, secs}), UIK.text_body());
+
+    // Held seed hint
+    idx := player_held_seed_index(player);
+    if idx >= 0 {
+        UIK.spacer(UIK.pixels(12), UIK.pixels(1));
+        UIK.text(format_string("Holding: %", {seed_name_for_index(idx)}), UIK.text_body());
+    }
+
+    UIK.panel_end();
+    UIK.end();
+}

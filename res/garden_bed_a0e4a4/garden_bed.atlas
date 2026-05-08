@@ -1,0 +1,17 @@
+a0e4a422ecd56893.png
+	size: 480, 480
+	filter: Linear, Linear
+garden bed/garden_bed
+	bounds: 6, 133, 466, 191
+	offsets: 1, 1, 468, 193
+garden bed/lettuce_full
+	bounds: 245, 330, 142, 157
+	offsets: 1, 1, 144, 159
+	rotate: 90
+garden bed/lettuce_mound
+	bounds: 6, 426, 109, 46
+	offsets: 1, 1, 111, 48
+garden bed/lettuce_sprout
+	bounds: 121, 363, 109, 118
+	offsets: 1, 1, 111, 120
+	rotate: 90

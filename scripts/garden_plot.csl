@@ -1,0 +1,153 @@
+Garden_Plot :: class : Interactable {
+    // Set these in the editor via @ao_serialize
+    plot_index: s64 @ao_serialize;
+
+    owner_id: string;
+    planted_seed_index: s64;
+    plant_time: float;
+    is_ready: bool;
+    spine: Spine_Animator @ao_serialize;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        planted_seed_index = -1;
+        owner_id = "";
+        is_ready = false;
+
+        spine = entity.get_component(Spine_Animator);
+        if #alive(spine) {
+            spine.awaken();
+            spine.set_skin("empty");
+            spine.refresh_skins();
+            spine.set_animation("garden_bed_idle", true, 0);
+        }
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if planted_seed_index == -1 {
+            // Empty — player must have a seed
+            return player_held_seed_index(player) >= 0;
+        }
+        if is_ready {
+            // Ready to harvest — only owner
+            return owner_id == player.get_user_id();
+        }
+        return false;
+    }
+
+    on_interact :: method(player: Player) {
+        if planted_seed_index == -1 {
+            plant_seed(player);
+        } else if is_ready {
+            harvest(player);
+        }
+    }
+
+    plant_seed :: method(player: Player) {
+        idx := player_held_seed_index(player);
+        if idx < 0 return;
+
+        player_remove_held_seed(player, idx);
+        planted_seed_index = idx;
+        owner_id = player.get_user_id();
+        plant_time = get_time();
+        is_ready = false;
+
+        if #alive(spine) {
+            spine.set_skin("mound");
+            spine.refresh_skins();
+            spine.set_animation("garden_bed_idle", true, 0);
+        }
+
+        sfx := get_asset(SFX_Asset, "Animated Farm Wheat Plot_Plant_f3d2b2/audio/plant_seed.wav");
+        if #alive(sfx) {
+            desc := SFX.default_sfx_desc();
+            desc.entity_to_follow = entity.id;
+            desc.volume = 0.5;
+            SFX.play(sfx, desc);
+        }
+
+        this.set_text("Growing...");
+    }
+
+    harvest :: method(player: Player) {
+        if planted_seed_index < 0 return;
+        idx := planted_seed_index;
+
+        crop_def := crop_item_defs[idx];
+        crop := Items.create_item_instance(crop_def, 1);
+        will_destroy: bool;
+        if Items.can_move_item_to_inventory(crop, player.default_inventory, ref will_destroy) {
+            Items.move_item_to_inventory(crop, player.default_inventory);
+        }
+
+        // Reset plot
+        planted_seed_index = -1;
+        owner_id = "";
+        is_ready = false;
+
+        if #alive(spine) {
+            spine.set_skin("empty");
+            spine.refresh_skins();
+            spine.set_animation("garden_bed_idle", true, 0);
+        }
+
+        sfx := get_asset(SFX_Asset, "Animated Farm Wheat Plot_Plant_f3d2b2/audio/cut.wav");
+        if #alive(sfx) {
+            desc := SFX.default_sfx_desc();
+            desc.entity_to_follow = entity.id;
+            desc.volume = 0.6;
+            SFX.play(sfx, desc);
+        }
+
+        this.set_text("Plant a seed");
+    }
+
+    ao_update :: method(dt: float) {
+        if planted_seed_index < 0 {
+            this.set_text("Plant a seed");
+            return;
+        }
+        if is_ready {
+            this.set_text("Harvest!");
+            return;
+        }
+
+        seed_def := seed_item_defs[planted_seed_index];
+        elapsed := get_time() - plant_time;
+        progress := elapsed / seed_def.grow_secs;
+        if progress > 1.0 { progress = 1.0; }
+
+        // Drive spine skin by growth stage
+        if #alive(spine) {
+            if progress < 0.25 {
+                spine.set_skin("mound");
+                spine.refresh_skins();
+                spine.set_animation("garden_bed_idle", true, 0);
+            } else if progress < 0.75 {
+                spine.set_skin("sprout");
+                spine.refresh_skins();
+                spine.set_animation("garden_bed_idle", true, 0);
+            } else if !is_ready {
+                spine.set_skin("full");
+                spine.refresh_skins();
+                spine.set_animation("lettuce_grow", false, 0);
+            }
+        }
+
+        if progress >= 1.0 {
+            is_ready = true;
+            if #alive(spine) {
+                spine.set_skin("full");
+                spine.refresh_skins();
+                spine.set_animation("lettuce_idle", true, 0);
+            }
+        }
+
+        secs_left := seed_def.grow_secs - elapsed;
+        if secs_left < 0 { secs_left = 0; }
+        mins := secs_left.(s64) / 60;
+        secs := secs_left.(s64) % 60;
+        this.set_text(format_string("Growing % %:%", {seed_name_for_index(planted_seed_index), mins, secs}));
+    }
+}

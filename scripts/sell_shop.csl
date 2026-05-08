@@ -1,0 +1,83 @@
+Sell_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Deposit crops at the Bank");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        if !player.is_local_or_server() return;
+
+        total_earned: s64 = 0;
+        items_to_remove: [..]Item_Instance;
+
+        for i: 0..player.default_inventory.capacity - 1 {
+            item := player.default_inventory.get_item(i);
+            if item == null continue;
+            defn := item.get_definition();
+            if defn.#type == Crop_Definition {
+                cd := defn.(Crop_Definition);
+                total_earned += cd.sell_value * item.quantity;
+                items_to_remove.append(item);
+            }
+        }
+
+        if total_earned == 0 {
+            Notifier.notify(player, "No crops to sell! Harvest from the garden first.");
+            return;
+        }
+
+        for item: items_to_remove {
+            if !#alive(item) continue;
+            Items.remove_item_from_inventory(item, player.default_inventory);
+            Items.destroy_item_instance(item);
+        }
+
+        Economy.deposit_currency(player, "Coins", total_earned);
+
+        // Spawn coin animation
+        spawn_coin_effect(player.entity.local_position, total_earned);
+
+        sfx := get_asset(SFX_Asset, "Gold Coin_6be977/audio/coin_collect.wav");
+        if #alive(sfx) {
+            desc := SFX.default_sfx_desc();
+            desc.entity_to_follow = player.entity.id;
+            desc.volume = 0.7;
+            SFX.play(sfx, desc);
+        }
+
+        Notifier.notify(player, format_string("Deposited % coins!", {total_earned}));
+    }
+}
+
+spawn_coin_effect :: proc(pos: v2, amount: s64) {
+    coin_asset := get_asset(Spine_Asset, "Gold Coin_6be977/Gold Coin.spine");
+    if !#alive(coin_asset) return;
+
+    e := Scene.create_entity();
+    e.set_local_position(pos);
+
+    anim := e.add_component(Spine_Animator);
+    anim.awaken();
+    anim.set_skeleton(coin_asset);
+    anim.set_animation("drop", false, 0);
+    anim.scale = v2{0.5, 0.5};
+
+    destroyer := e.add_component(Timed_Destroy);
+    destroyer.lifetime = 1.5;
+}
+
+Timed_Destroy :: class : Component {
+    lifetime: float @ao_serialize;
+    elapsed: float;
+
+    ao_update :: method(dt: float) {
+        elapsed += dt;
+        if elapsed >= lifetime {
+            entity.destroy();
+        }
+    }
+}

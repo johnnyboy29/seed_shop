@@ -1,0 +1,25 @@
+f068f3bd415fa7db.png
+	size: 2048, 2048
+	filter: Linear, Linear
+images/exotic_bloxfruit/Fly
+	bounds: 1964, 1667, 42, 43
+	offsets: 1, 1, 44, 45
+	rotate: 90
+images/exotic_bloxfruit/exotic_blox_fruit
+	bounds: 1654, 1479, 230, 304
+	rotate: 90
+images/exotic_bloxfruit/exotic_blox_fruit_dead
+	bounds: 1177, 1446, 227, 200
+	offsets: 1, 1, 229, 202
+images/white poof/Poof_1
+	bounds: 1654, 1715, 386, 325
+	offsets: 1, 1, 388, 327
+images/white poof/Poof_2
+	bounds: 1177, 1652, 471, 388
+	offsets: 1, 1, 473, 390
+images/white poof/Poof_3
+	bounds: 6, 1571, 598, 469
+	offsets: 1, 1, 600, 471
+images/white poof/Poof_4
+	bounds: 610, 1585, 561, 455
+	offsets: 1, 1, 563, 457
