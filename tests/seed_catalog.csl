@@ -1,0 +1,12 @@
+test_seed_catalog_has_more_variety :: proc() {
+    Test.assert_var_int("seed catalog count", "seed_catalog_count", 10);
+}
+
+test_seed_shop_purchase_flow :: proc() {
+    Test.wait_seconds(0.5);
+    Test.interact_with("Seed_Shop_Kiosk");
+    Test.wait_seconds(0.5);
+    Test.assert_var_int("purchase callback fired", "seed_shop_purchase_count", 1);
+    Test.assert_player_has_item("wildflower seeds purchased", "wildflower_seeds");
+    Test.assert_player_item_count("one wildflower seed stack", "wildflower_seeds", 1);
+}

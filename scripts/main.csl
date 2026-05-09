@@ -1,0 +1,562 @@
+import "core:ao"
+import "core:dropped_items"
+
+SHOP_SEED_COUNT :: 10;
+SHOP_RESTOCK_SECONDS :: 300.0;
+SHOP_STARTING_COINS :: 1000;
+
+shop_coin_icon: Texture_Asset;
+shop_cart_icon: Texture_Asset;
+shop_purchase_sfx: SFX_Asset;
+
+Seed_Definition :: class : Item_Definition {
+    growth_time: float;
+    harvest_yield: s64;
+    purchase_price: s64;
+    max_stock: s64;
+    flavor_text: string;
+}
+
+seed_catalog: [..]Seed_Definition;
+seed_catalog_count: int;
+seed_shop_purchase_count: int;
+
+register_seed_definition :: proc(
+    id: string,
+    display_name: string,
+    icon: Texture_Asset,
+    growth_time: float,
+    harvest_yield: s64,
+    purchase_price: s64,
+    max_stock: s64,
+    tier: Item_Tier,
+    flavor_text: string,
+) -> Seed_Definition {
+    seed_defn := Items.register_item_definition(
+        {id, display_name, icon, 99, tier},
+        Seed_Definition,
+    );
+    seed_defn.growth_time = growth_time;
+    seed_defn.harvest_yield = harvest_yield;
+    seed_defn.purchase_price = purchase_price;
+    seed_defn.max_stock = max_stock;
+    seed_defn.flavor_text = flavor_text;
+    seed_catalog.append(seed_defn);
+    seed_catalog_count += 1;
+    return seed_defn;
+}
+
+show_seed_shop_toast :: proc(player: Player, icon: Texture_Asset, message: string, subtitle: string) {
+    player.shop_toast_icon = icon;
+    player.shop_toast_text = message;
+    player.shop_toast_subtitle = subtitle;
+    player.shop_toast_start_time = get_time();
+    player.shop_toast_duration = 2.0;
+    player.shop_toast_active = true;
+}
+
+refresh_seed_shop_stock :: proc(player: Player, force: bool = false) {
+    if !force && get_time() < player.shop_next_restock_time {
+        return;
+    }
+
+    for i: 0..seed_catalog_count - 1 {
+        defn := seed_catalog[i];
+        max_stock := defn.max_stock;
+        if max_stock < 1 {
+            max_stock = 1;
+        }
+
+        player.shop_stock[i] = rng_range_int(ref player.shop_rng, 1, max_stock);
+    }
+
+    player.shop_next_restock_time = get_time() + SHOP_RESTOCK_SECONDS;
+}
+
+try_buy_seed :: proc(player: Player, index: int) {
+    if index < 0 || index >= seed_catalog_count {
+        return;
+    }
+
+    defn := seed_catalog[index];
+
+    if player.shop_stock[index] <= 0 {
+        show_seed_shop_toast(player, defn.get_icon(), format_string("% sold out", {defn.get_name()}), "Try another seed");
+        return;
+    }
+
+    if !Economy.can_withdraw_currency(player, "Coins", defn.purchase_price) {
+        show_seed_shop_toast(player, shop_coin_icon, "Need more Coins", "Come back soon");
+        return;
+    }
+
+    item := Items.create_item_instance(defn, 1);
+    will_destroy: bool;
+    if !Items.can_move_item_to_inventory(item, player.default_inventory, ref will_destroy) {
+        Items.destroy_item_instance(item);
+        show_seed_shop_toast(player, defn.get_icon(), "Inventory full", "Clear a slot");
+        return;
+    }
+
+    Economy.withdraw_currency(player, "Coins", defn.purchase_price);
+    Items.move_item_to_inventory(item, player.default_inventory);
+    player.shop_stock[index] -= 1;
+    seed_shop_purchase_count += 1;
+
+    show_seed_shop_toast(
+        player,
+        defn.get_icon(),
+        format_string("Bought %", {defn.get_name()}),
+        "Added to inventory",
+    );
+
+    if player.is_local() {
+        desc := SFX.default_sfx_desc();
+        desc.volume = 0.35;
+        SFX.play(shop_purchase_sfx, desc);
+    }
+}
+
+Seed_Shop_Kiosk :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Quick Buy Wildflower Seeds");
+        this.required_hold_time = 0.2;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        try_buy_seed(player, 0);
+        player.shop_open = true;
+    }
+}
+
+draw_seed_shop_topbar :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+
+    shell := UIK.panel_interior(.INSET);
+    shell.padding = v4{8, 16, 8, 16};
+    shell.gap = 16;
+    UIK.panel_begin(shell);
+
+    row := UIK.layout_row();
+    row.width = UIK.flex(1);
+    row.height = UIK.flex(1);
+    row.cross_align = .CENTER;
+    row.gap = 16;
+    UIK.panel_begin(row);
+
+    UIK.currency(shop_coin_icon, Economy.get_balance(player, "Coins"), UIK.text_body());
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    remaining := player.shop_next_restock_time - get_time();
+    if remaining < 0 {
+        remaining = 0;
+    }
+    UIK.text(format_string("Restock in %", {format_float(remaining, decimals=0)}), UIK.text_body());
+
+    button_label := "Shop";
+    if player.shop_open {
+        button_label = "Hide Shop";
+    }
+
+    open_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+    open_desc.panel.width = UIK.pixels(180);
+    open_desc.panel.height = UIK.pixels(52);
+    open_handle := UIK.button("open", button_label, open_desc);
+
+    UIK.panel_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(open_handle) {
+        player.shop_open = !player.shop_open;
+    }
+}
+
+draw_seed_shop_window :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 15));
+
+    shell := UIK.panel_modal(.BLUE_WITH_FOOTER);
+    shell.padding = v4{16, 16, 16, 16};
+    shell.gap = 12;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Seed Shop");
+    title_desc.icon = shop_cart_icon;
+    exit_handle := UIK.title_area(title_desc);
+
+    UIK.spacer(UIK.pixels(1), UIK.pixels(4));
+
+    info_row := UIK.layout_row();
+    info_row.width = UIK.flex(1);
+    info_row.height = UIK.fit();
+    info_row.cross_align = .CENTER;
+    info_row.gap = 16;
+    UIK.panel_begin(info_row);
+
+    UIK.text("Fresh stock every 5 minutes.", UIK.text_body());
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    remaining := player.shop_next_restock_time - get_time();
+    if remaining < 0 {
+        remaining = 0;
+    }
+    UIK.text(format_string("Restock in %", {format_float(remaining, decimals=0)}), UIK.text_body());
+
+    UIK.panel_end();
+
+    list_desc := UIK.layout_column();
+    list_desc.width = UIK.flex(1);
+    list_desc.height = UIK.flex(1);
+    list_desc.gap = 10;
+    UIK.list_begin("seed_shop/list", list_desc);
+
+    buy_handles: [SHOP_SEED_COUNT]UIK.Interact_Handle;
+
+    for i: 0..seed_catalog_count - 1 {
+        defn := seed_catalog[i];
+
+        row := UIK.layout_row();
+        row.width = UIK.flex(1);
+        row.height = UIK.pixels(112);
+        row.gap = 12;
+        row.padding = v4{12, 12, 12, 12};
+        row.cross_align = .CENTER;
+        UIK.panel_begin(row);
+
+        icon_box := UIK.panel_interior(.INSET);
+        icon_box.width = UIK.pixels(88);
+        icon_box.height = UIK.pixels(88);
+        UIK.panel_begin(icon_box);
+        UIK.image_fitted(defn.get_icon(), UIK.image_desc(.CONTAIN));
+        UIK.panel_end();
+
+        mid := UIK.layout_column();
+        mid.width = UIK.flex(1);
+        mid.height = UIK.flex(1);
+        mid.gap = 4;
+        UIK.panel_begin(mid);
+
+        UIK.text(defn.get_name(), UIK.text_title());
+        stats := format_string("Grow % | Yield x%", {format_float(defn.growth_time, decimals=0), defn.harvest_yield});
+        UIK.text(stats, UIK.text_body());
+        UIK.text(defn.flavor_text, UIK.text_body());
+
+        UIK.panel_end();
+
+        right := UIK.layout_column();
+        right.width = UIK.pixels(180);
+        right.height = UIK.flex(1);
+        right.gap = 4;
+        right.cross_align = .CENTER;
+        UIK.panel_begin(right);
+
+        UIK.currency(shop_coin_icon, defn.purchase_price, UIK.text_button());
+        UIK.text(format_string("Stock: %", {player.shop_stock[i]}), UIK.text_body());
+
+        buy_desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+        buy_desc.panel.width = UIK.pixels(160);
+        buy_desc.panel.height = UIK.pixels(48);
+        buy_desc.disabled = player.shop_stock[i] <= 0;
+        buy_handles[i] = UIK.button(format_string("buy_%", {defn.get_id()}), "Buy", buy_desc);
+
+        UIK.panel_end();
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.shop_open = false;
+    }
+
+    for i: 0..seed_catalog_count - 1 {
+        if UIK.clicked(buy_handles[i]) {
+            try_buy_seed(player, i);
+        }
+    }
+}
+
+draw_seed_shop_toast :: proc(player: Player) {
+    if !player.shop_toast_active {
+        return;
+    }
+
+    elapsed := get_time() - player.shop_toast_start_time;
+    if elapsed >= player.shop_toast_duration {
+        player.shop_toast_active = false;
+        return;
+    }
+
+    t := clamp(elapsed / player.shop_toast_duration, 0, 1);
+    alpha := 1.0 - t;
+
+    toast_rect := UIK.rect_stats();
+    toast_rect.offset_unscaled(0.0, lerp(0.0, 40.0, t));
+    toast_rect = toast_rect.bottom_left_rect().grow(24.0, 380.0, 24.0, 24.0);
+
+    UIK.begin(UIK.window(toast_rect));
+
+    shell := UIK.panel_modal(.TRANSP_BLACK);
+    shell.padding = v4{12, 12, 12, 12};
+    shell.gap = 8;
+    shell.opacity = alpha;
+    UIK.panel_begin(shell);
+
+    row := UIK.layout_row();
+    row.width = UIK.flex(1);
+    row.height = UIK.flex(1);
+    row.gap = 8;
+    row.cross_align = .CENTER;
+    UIK.panel_begin(row);
+
+    icon_box := UIK.panel_interior(.INSET);
+    icon_box.width = UIK.pixels(52);
+    icon_box.height = UIK.pixels(52);
+    UIK.panel_begin(icon_box);
+    if player.shop_toast_icon != null {
+        UIK.image_fitted(player.shop_toast_icon, UIK.image_desc(.CONTAIN));
+    }
+    UIK.panel_end();
+
+    text_col := UIK.layout_column();
+    text_col.width = UIK.flex(1);
+    text_col.height = UIK.flex(1);
+    text_col.gap = 2;
+    UIK.panel_begin(text_col);
+    UIK.text(player.shop_toast_text, UIK.text_title());
+    UIK.text(player.shop_toast_subtitle, UIK.text_body());
+    UIK.panel_end();
+
+    UIK.panel_end();
+    UIK.panel_end();
+    UIK.end();
+}
+
+// Game wide systems
+ao_before_scene_load :: proc() {
+    shop_coin_icon = get_asset(Texture_Asset, "Gold Coin Icon_d3f0f3.png");
+    shop_cart_icon = get_asset(Texture_Asset, "Shopping Cart Icon_0f25a4.png");
+    shop_purchase_sfx = get_asset(SFX_Asset, "purchase_item_b8876a.wav");
+
+    Economy.register_currency("Coins", shop_coin_icon);
+
+    if seed_catalog_count > 0 {
+        return;
+    }
+
+    register_seed_definition(
+        "wildflower_seeds",
+        "Wildflower Seeds",
+        get_asset(Texture_Asset, "Seed Packet_ac97dc.png"),
+        22.0,
+        3,
+        15,
+        12,
+        .COMMON,
+        "A lively mix that spreads quickly.",
+    );
+    register_seed_definition(
+        "garden_seeds",
+        "Garden Seeds",
+        get_asset(Texture_Asset, "seed_04b053.png"),
+        25.0,
+        3,
+        18,
+        10,
+        .COMMON,
+        "A reliable starter packet for new plots.",
+    );
+    register_seed_definition(
+        "mixed_seeds",
+        "Mixed Seeds",
+        get_asset(Texture_Asset, "Seeds_02c675.png"),
+        20.0,
+        2,
+        20,
+        10,
+        .COMMON,
+        "A little of everything for flexible planting.",
+    );
+    register_seed_definition(
+        "corn_seeds",
+        "Corn Seeds",
+        get_asset(Texture_Asset, "seed_packet_corn_e50055.png"),
+        35.0,
+        4,
+        35,
+        7,
+        .UNCOMMON,
+        "Tall stalks and a hearty harvest.",
+    );
+    register_seed_definition(
+        "lettuce_seeds",
+        "Lettuce Seeds",
+        get_asset(Texture_Asset, "lettuce_sprout_04c062.png"),
+        18.0,
+        2,
+        14,
+        14,
+        .COMMON,
+        "Fast-growing and easy to restock.",
+    );
+    register_seed_definition(
+        "sapling_seeds",
+        "Sapling Seeds",
+        get_asset(Texture_Asset, "tree_sprout_green_a6986d.png"),
+        45.0,
+        1,
+        60,
+        4,
+        .RARE,
+        "Slow growth, but a strong long-term payoff.",
+    );
+    register_seed_definition(
+        "seedling_seeds",
+        "Seedling Seeds",
+        get_asset(Texture_Asset, "seedling_d77c07.png"),
+        28.0,
+        2,
+        24,
+        8,
+        .UNCOMMON,
+        "A sturdy little sprout with room to grow.",
+    );
+    register_seed_definition(
+        "sunflower_seeds",
+        "Sunflower Seeds",
+        get_asset(Texture_Asset, "sunflower_seed_f8ad43.png"),
+        30.0,
+        3,
+        30,
+        7,
+        .UNCOMMON,
+        "Big blooms and bright profits.",
+    );
+    register_seed_definition(
+        "twin_seeds",
+        "Twin Seeds",
+        get_asset(Texture_Asset, "seed2_91ff52.png"),
+        24.0,
+        3,
+        22,
+        10,
+        .COMMON,
+        "Two for the price of one grow cycle.",
+    );
+    register_seed_definition(
+        "seed_satchels",
+        "Seed Satchels",
+        get_asset(Texture_Asset, "seed bag_809373.png"),
+        40.0,
+        5,
+        45,
+        5,
+        .RARE,
+        "Packed for serious growers with bigger plots.",
+    );
+}
+
+ao_start :: proc() {
+    kiosk_entity := Scene.create_entity();
+    kiosk_entity.set_name("Seed_Shop_Kiosk");
+    kiosk_entity.set_local_position({0, 0});
+    kiosk_entity.set_local_scale({1.4, 1.4});
+
+    kiosk_sprite := kiosk_entity.add_component(Sprite_Renderer);
+    kiosk_sprite.set_texture(shop_cart_icon);
+
+    kiosk_entity.add_component(Seed_Shop_Kiosk);
+}
+
+ao_update :: proc(dt: float) {
+
+}
+
+ao_late_update :: proc(dt: float) {
+
+}
+
+// Per player state
+Player :: class : Player_Base {
+    shop_open: bool;
+    shop_rng: u64;
+    shop_stock: [SHOP_SEED_COUNT]s64;
+    shop_next_restock_time: float;
+
+    shop_toast_active: bool;
+    shop_toast_text: string;
+    shop_toast_subtitle: string;
+    shop_toast_icon: Texture_Asset;
+    shop_toast_start_time: float;
+    shop_toast_duration: float;
+
+    ao_start :: method() {
+        shop_rng = rng_root_seed();
+        shop_open = true;
+        current_balance := Economy.get_balance(this, "Coins");
+        if current_balance < SHOP_STARTING_COINS {
+            Economy.deposit_currency(this, "Coins", SHOP_STARTING_COINS - current_balance);
+        }
+
+        refresh_seed_shop_stock(this, true);
+    }
+
+    ao_update :: method(dt: float) {
+        if get_time() >= shop_next_restock_time {
+            refresh_seed_shop_stock(this);
+        }
+    }
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_seed_shop_topbar(this);
+
+            options := Inventory_Draw_Options.default();
+            options.hotbar_item_count = 5;
+            options.scroll_item_selection = true;
+            options.keyboard_item_selection = true;
+            options.enable_use_from_hotbar = false;
+
+            hotbar_result := Items.draw_hotbar(this, default_inventory, options);
+
+            if #alive(hotbar_result.dropped_item) {
+                Items.remove_item_from_inventory(hotbar_result.dropped_item, hotbar_result.dropped_item.inventory);
+                Dropped_Item.spawn(entity.world_position + v2{1, 0}, hotbar_result.dropped_item);
+            }
+
+            if shop_open {
+                draw_seed_shop_window(this);
+            }
+
+            draw_seed_shop_toast(this);
+        }
+    }
+
+    ao_end :: method() {
+        // On destroy
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        // Global ability callback for example don't allow use when dead
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        // Global interactable callback
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+        // Called on the client after applying a state sync from the server
+        // Use this to override things for the local player only like name colors or lighting for example
+    }
+}

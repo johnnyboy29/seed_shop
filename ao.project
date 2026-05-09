@@ -1,0 +1,10 @@
+{
+    csl: true
+    projects:
+    [
+        {
+            name: "Expand Seed Variety"
+            id: "69e923e588cc7daf6d9cd78e"
+        }
+    ]
+}
