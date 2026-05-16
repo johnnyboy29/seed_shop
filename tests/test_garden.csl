@@ -1,0 +1,71 @@
+// Tests for core garden mechanics
+
+buy_carrot_seed :: proc() {
+    Test.teleport({-2.5, 0.5});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(1.0);
+    Test.assert_player_has_item("has seed after shop interact", "seed_0");
+}
+
+test_gate_plot_assignment :: proc() {
+    Test.assert_entity_exists("plot 0 soil 0 exists", "Plot0_Soil_0");
+    Test.assert_entity_exists("plot 0 soil 1 exists", "Plot0_Soil_1");
+    Test.assert_entity_exists("plot 0 soil 2 exists", "Plot0_Soil_2");
+    Test.assert_entity_exists("plot 0 soil 3 exists", "Plot0_Soil_3");
+    Test.assert_entity_exists("plot 0 soil 4 exists", "Plot0_Soil_4");
+    Test.assert_entity_exists("plot 0 soil 5 exists", "Plot0_Soil_5");
+}
+
+test_gate_seed_shop_buy :: proc() {
+    Test.teleport({-2.5, 0.5});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(1.0);
+    Test.assert_player_has_item("seed purchased from shop", "seed_0");
+}
+
+test_gate_planting :: proc() {
+    buy_carrot_seed();
+    Test.teleport({-7.64, 3.9});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(0.5);
+    Test.assert_component("soil enters growing state", "Plot0_Soil_3", "Soil_Tile.state", "GROWING");
+    Test.screenshot("after_planting");
+}
+
+test_gate_harvest :: proc() {
+    buy_carrot_seed();
+    Test.teleport({-5.79833, 2.5});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(0.5);
+    Test.assert_component("soil growing", "Plot0_Soil_1", "Soil_Tile.state", "GROWING");
+    Test.wait_seconds(32.0);
+    Test.assert_component("soil ready", "Plot0_Soil_1", "Soil_Tile.state", "READY");
+    Test.interact();
+    Test.wait_seconds(0.5);
+    Test.assert_component("soil empty after harvest", "Plot0_Soil_1", "Soil_Tile.state", "EMPTY");
+    Test.assert_player_has_item("crop in inventory", "crop_0");
+    Test.screenshot("after_harvest");
+}
+
+test_gate_sell_shop :: proc() {
+    buy_carrot_seed();
+    Test.teleport({-3.95667, 2.5});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(0.5);
+    Test.assert_component("soil growing for sell", "Plot0_Soil_2", "Soil_Tile.state", "GROWING");
+    Test.wait_seconds(32.0);
+    Test.interact();
+    Test.wait_seconds(0.5);
+    Test.assert_player_has_item("has crop to sell", "crop_0");
+    Test.teleport({2.5, 0.5});
+    Test.wait_seconds(0.5);
+    Test.interact();
+    Test.wait_seconds(1.0);
+    Test.assert_player_item_count("crops all sold", "crop_0", 0);
+    Test.screenshot("after_sell");
+}

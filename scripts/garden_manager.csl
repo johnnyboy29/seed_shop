@@ -1,0 +1,23 @@
+Garden_Manager :: class : Component {
+    plot_owners: [4]string;
+
+    ao_start :: method() {
+        plot_owners[0] = "";
+        plot_owners[1] = "";
+        plot_owners[2] = "";
+        plot_owners[3] = "";
+    }
+
+    assign_plot :: method(user_id: string) -> int {
+        for i: 0..3 {
+            if plot_owners[i] == user_id return i;
+        }
+        for i: 0..3 {
+            if plot_owners[i] == "" {
+                plot_owners[i] = user_id;
+                return i;
+            }
+        }
+        return 0;
+    }
+}

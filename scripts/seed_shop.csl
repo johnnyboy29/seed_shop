@@ -1,0 +1,35 @@
+Seed_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Seed Shop");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        // Direct server-authoritative purchase of cheapest affordable seed.
+        // This runs on both client and server so the purchase is reliable.
+        // Players can then buy more seeds via the UI.
+        for k: 0..SEED_COUNT - 1 {
+            price := get_seed_buy_price(k).(s64);
+            if Economy.can_withdraw_currency(player, "Coins", price) {
+                Economy.withdraw_currency(player, "Coins", price);
+                seed_def := g_seed_defs[k];
+                seed_item := Items.create_item_instance(seed_def, 1);
+                will_destroy: bool;
+                if Items.can_move_item_to_inventory(seed_item, player.default_inventory, ref will_destroy) {
+                    Items.move_item_to_inventory(seed_item, player.default_inventory);
+                }
+                sfx := get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+                desc := SFX.default_sfx_desc();
+                desc.entity_to_follow = entity.id;
+                desc.volume = 0.5;
+                SFX.play(sfx, desc);
+                break;
+            }
+        }
+        player.show_seed_shop = true;
+    }
+}

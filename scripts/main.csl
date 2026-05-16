@@ -1,0 +1,212 @@
+import "core:ao"
+
+SEED_COUNT  :: 10;
+MAX_PLOTS   :: 4;
+PLAYER_START_COINS :: 50;
+
+Seed_Definition :: class : Item_Definition {
+    kind:      int;
+    buy_price: int;
+    grow_time: float;
+}
+
+Crop_Definition :: class : Item_Definition {
+    kind:       int;
+    sell_price: int;
+}
+
+g_seed_defs: [..]Seed_Definition;
+g_crop_defs: [..]Crop_Definition;
+
+get_seed_name :: proc(kind: int) -> string {
+    switch kind {
+        case 0: return "Carrot";
+        case 1: return "Potato";
+        case 2: return "Tomato";
+        case 3: return "Corn";
+        case 4: return "Sunflower";
+        case 5: return "Pepper";
+        case 6: return "Watermelon";
+        case 7: return "Pumpkin";
+        case 8: return "Berry";
+        case 9: return "Golden Wheat";
+        default: return "Unknown";
+    }
+}
+
+get_seed_buy_price :: proc(kind: int) -> int {
+    switch kind {
+        case 0: return 5;
+        case 1: return 8;
+        case 2: return 12;
+        case 3: return 20;
+        case 4: return 30;
+        case 5: return 50;
+        case 6: return 75;
+        case 7: return 110;
+        case 8: return 150;
+        case 9: return 200;
+        default: return 99;
+    }
+}
+
+get_crop_sell_price :: proc(kind: int) -> int {
+    switch kind {
+        case 0: return 12;
+        case 1: return 18;
+        case 2: return 28;
+        case 3: return 45;
+        case 4: return 65;
+        case 5: return 110;
+        case 6: return 165;
+        case 7: return 240;
+        case 8: return 330;
+        case 9: return 450;
+        default: return 0;
+    }
+}
+
+get_seed_grow_time :: proc(kind: int) -> float {
+    switch kind {
+        case 0, 1: return 30.0;
+        case 2:    return 35.0;
+        case 3, 4: return 40.0;
+        case 5:    return 45.0;
+        case 6:    return 50.0;
+        case 7:    return 55.0;
+        case 8, 9: return 60.0;
+        default:   return 30.0;
+    }
+}
+
+get_seed_icon_path :: proc(kind: int) -> string {
+    switch kind {
+        case 0: return "CarrotUI_5d3884.png";
+        case 1: return "Potato_566afc.png";
+        case 2: return "TomatoUI_ffadad.png";
+        case 3: return "CornUI_9eb9dd.png";
+        case 4: return "Sunflower_82c1c5.png";
+        case 5: return "red-chili-pepper_9642f7.png";
+        case 6: return "watermelon_0fa099.png";
+        case 7: return "Pumpkin_69d217.png";
+        case 8: return "fantasy_berry_plant_0c51e8.png";
+        case 9: return "premium_wheat_1_6e664f.png";
+        default: return "CarrotUI_5d3884.png";
+    }
+}
+
+get_plant_path :: proc(kind: int) -> string {
+    switch kind {
+        case 0: return "Carrot Plant (Growing)_d83107.png";
+        case 1: return "potato_plant_d93c6b.png";
+        case 2: return "tomato-plant_3c4b1c.png";
+        case 3: return "Corn_1f6789.png";
+        case 4: return "Sunflower_82c1c5.png";
+        case 5: return "red-chili-pepper_9642f7.png";
+        case 6: return "watermelon_0fa099.png";
+        case 7: return "Pumpkin_69d217.png";
+        case 8: return "fantasy_berry_plant_0c51e8.png";
+        case 9: return "premium_wheat_1_6e664f.png";
+        default: return "sprout_f85d1f.png";
+    }
+}
+
+get_seed_tier :: proc(kind: int) -> Item_Tier {
+    switch kind {
+        case 0, 1, 2: return .COMMON;
+        case 3, 4:    return .UNCOMMON;
+        case 5, 6:    return .RARE;
+        case 7, 8:    return .EPIC;
+        case 9:       return .LEGENDARY;
+        default:      return .COMMON;
+    }
+}
+
+ao_before_scene_load :: proc() {
+    Economy.register_currency("Coins", get_asset(Texture_Asset, "gold_coin_icon_59d961.png"));
+
+    for i: 0..SEED_COUNT - 1 {
+        icon := get_asset(Texture_Asset, get_seed_icon_path(i));
+
+        s_def := Items.register_item_definition(
+            {format_string("seed_%", {i}), format_string("% Seed", {get_seed_name(i)}), icon, 99, get_seed_tier(i)},
+            Seed_Definition
+        );
+        s_def.kind      = i;
+        s_def.buy_price = get_seed_buy_price(i);
+        s_def.grow_time = get_seed_grow_time(i);
+        g_seed_defs.append(s_def);
+
+        c_def := Items.register_item_definition(
+            {format_string("crop_%", {i}), format_string("% Crop", {get_seed_name(i)}), icon, 99, get_seed_tier(i)},
+            Crop_Definition
+        );
+        c_def.kind       = i;
+        c_def.sell_price = get_crop_sell_price(i);
+        g_crop_defs.append(c_def);
+    }
+}
+
+ao_start :: proc() {}
+ao_update :: proc(dt: float) {}
+ao_late_update :: proc(dt: float) {}
+
+Player :: class : Player_Base {
+    plot_index:       int;
+    show_seed_picker: bool;
+    pending_tile_slot: int;
+    show_seed_shop:   bool;
+
+    ao_start :: method() {
+        plot_index        = -1;
+        show_seed_picker  = false;
+        show_seed_shop    = false;
+        pending_tile_slot = 0;
+
+        for mgr: component_iterator(Garden_Manager) {
+            plot_index = mgr.assign_plot(get_user_id());
+            break;
+        }
+
+        if plot_index >= 0 {
+            spawn_positions: [4]v2 = {{-5.8, 0.8}, {5.8, 0.8}, {-5.8, -0.8}, {5.8, -0.8}};
+            entity.set_local_position(spawn_positions[plot_index]);
+        }
+
+        if Economy.get_balance(this, "Coins") == 0 {
+            Economy.deposit_currency(this, "Coins", PLAYER_START_COINS.(s64));
+        }
+    }
+
+    ao_update :: method(dt: float) {}
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_garden_hud(this);
+
+            inv_options := Inventory_Draw_Options.default();
+            inv_options.hotbar_item_count = 8;
+            Items.draw_hotbar(this, default_inventory, inv_options);
+
+            draw_plot_status(this);
+
+            if show_seed_shop {
+                draw_seed_shop_ui(this);
+            } else if show_seed_picker {
+                draw_seed_picker(this);
+            }
+        }
+    }
+
+    ao_end :: method() {}
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {}
+}

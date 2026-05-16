@@ -1,0 +1,264 @@
+find_soil_tile :: proc(plot_idx: int, slot: int) -> Soil_Tile {
+    for tile: component_iterator(Soil_Tile) {
+        if tile.plot_index == plot_idx && tile.tile_slot == slot {
+            return tile;
+        }
+    }
+    return null;
+}
+
+draw_garden_hud :: proc(player: Player) {
+    coin_icon := get_asset(Texture_Asset, "gold_coin_icon_59d961.png");
+    balance := Economy.get_balance(player, "Coins");
+
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+
+    bar := UIK.layout_row();
+    bar.width = UIK.flex(1);
+    bar.height = UIK.flex(1);
+    bar.padding = v4{12, 16, 12, 16};
+    bar.gap = 12;
+    bar.cross_align = .CENTER;
+    UIK.panel_begin(bar);
+
+    plot_label := format_string("Plot %", {player.plot_index + 1});
+    UIK.text(plot_label, UIK.text_title());
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    UIK.currency(coin_icon, balance.(s64), UIK.text_body());
+
+    UIK.panel_end();
+    UIK.end();
+}
+
+draw_plot_status :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_stats()));
+
+    col := UIK.layout_column();
+    col.width = UIK.flex(1);
+    col.height = UIK.flex(1);
+    col.padding = v4{8, 8, 8, 8};
+    col.gap = 6;
+    UIK.panel_begin(col);
+
+    for slot: 0..5 {
+        tile := find_soil_tile(player.plot_index, slot);
+        if tile == null continue;
+
+        row := UIK.layout_row();
+        row.width = UIK.flex(1);
+        row.height = UIK.pixels(36);
+        row.gap = 6;
+        row.cross_align = .CENTER;
+        UIK.panel_begin(row);
+
+        if tile.state == .EMPTY {
+            UIK.text("Empty", UIK.text_body());
+        } else if tile.state == .GROWING {
+            seed_name := get_seed_name(tile.seed_kind);
+            progress := tile.get_progress();
+            pct := (progress * 100.0).(int);
+            label := format_string("%: %0%%", {seed_name, pct});
+            UIK.text(label, UIK.text_body());
+
+            prog_desc := UIK.panel_progress_bar(.PROGRESS_BAR_STYLE_1, progress, {0.3, 0.8, 0.3, 1}, UIK.pixels(80), UIK.pixels(10));
+            UIK.progress_bar(prog_desc);
+        } else if tile.state == .READY {
+            seed_name := get_seed_name(tile.seed_kind);
+            label := format_string("% Ready!", {seed_name});
+            UIK.text(label, UIK.text_body());
+        }
+
+        UIK.panel_end();
+    }
+
+    UIK.panel_end();
+    UIK.end();
+}
+
+draw_seed_picker :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_small(), 15));
+
+    shell := UIK.panel_modal(.BLUE_WITH_FOOTER);
+    UIK.panel_begin(shell);
+
+    exit_handle := UIK.title_area(UIK.title_area_desc("Plant a Seed"));
+
+    content := UIK.layout_column();
+    content.width = UIK.flex(1);
+    content.height = UIK.flex(1);
+    content.gap = 6;
+    content.padding = v4{8, 8, 8, 8};
+    UIK.list_begin("seed_picker_list", content);
+
+    plant_handles: [10]UIK.Interact_Handle;
+    plant_kind_index: [10]int;
+    plant_count: int = 0;
+
+    for k: 0..SEED_COUNT - 1 {
+        item := find_seed_in_inventory(player, k);
+        if item == null continue;
+
+        row := UIK.layout_row();
+        row.width = UIK.flex(1);
+        row.height = UIK.pixels(56);
+        row.gap = 8;
+        row.cross_align = .CENTER;
+        UIK.panel_begin(row);
+
+        icon := get_asset(Texture_Asset, get_seed_icon_path(k));
+        icon_desc := UIK.layout_centered(UIK.pixels(40), UIK.pixels(40));
+        UIK.panel_begin(icon_desc);
+        UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+        UIK.panel_end();
+
+        name_col := UIK.layout_column();
+        name_col.width = UIK.flex(1);
+        name_col.height = UIK.fit();
+        UIK.panel_begin(name_col);
+        UIK.text(get_seed_name(k), UIK.text_body());
+        count_text := format_string("x%", {item.quantity});
+        UIK.text(count_text, UIK.text_body());
+        UIK.panel_end();
+
+        btn_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+        btn_desc.panel.width = UIK.pixels(70);
+        btn_desc.panel.height = UIK.pixels(40);
+        plant_handles[plant_count] = UIK.button(format_string("plant_k%", {k}), "Plant", btn_desc);
+        plant_kind_index[plant_count] = k;
+        plant_count += 1;
+
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.show_seed_picker = false;
+    }
+
+    for i: 0..plant_count - 1 {
+        if plant_handles[i].generation > 0 {
+            if UIK.clicked(plant_handles[i]) {
+                tile := find_soil_tile(player.plot_index, player.pending_tile_slot);
+                if tile != null {
+                    tile.plant(plant_kind_index[i], player);
+                }
+                player.show_seed_picker = false;
+            }
+        }
+    }
+}
+
+draw_seed_shop_ui :: proc(player: Player) {
+    coin_icon := get_asset(Texture_Asset, "gold_coin_icon_59d961.png");
+    balance := Economy.get_balance(player, "Coins");
+
+    UIK.begin(UIK.modal(UIK.rect_window(), 15));
+
+    shell := UIK.panel_modal(.BLACK);
+    shell.gap = 0;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Seed Shop");
+    exit_handle := UIK.title_area(title_desc);
+
+    content := UIK.layout_column();
+    content.width = UIK.flex(1);
+    content.height = UIK.flex(1);
+    content.padding = v4{10, 12, 10, 12};
+    content.gap = 6;
+    UIK.list_begin("seed_shop_list", content);
+
+    buy_handles: [10]UIK.Interact_Handle;
+
+    for k: 0..SEED_COUNT - 1 {
+        price := get_seed_buy_price(k);
+        can_afford := balance >= price;
+
+        row_bg := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+        row_bg.width = UIK.flex(1);
+        row_bg.height = UIK.pixels(64);
+        UIK.panel_begin(row_bg);
+
+        row := UIK.layout_row();
+        row.width = UIK.flex(1);
+        row.height = UIK.pixels(64);
+        row.gap = 10;
+        row.cross_align = .CENTER;
+        row.padding = v4{8, 8, 8, 8};
+        UIK.panel_begin(row);
+
+        icon := get_asset(Texture_Asset, get_seed_icon_path(k));
+        icon_box := UIK.layout_centered(UIK.pixels(44), UIK.pixels(44));
+        UIK.panel_begin(icon_box);
+        UIK.image_fitted(icon, UIK.image_desc(.CONTAIN));
+        UIK.panel_end();
+
+        info_col := UIK.layout_column();
+        info_col.width = UIK.flex(1);
+        info_col.height = UIK.fit();
+        UIK.panel_begin(info_col);
+        UIK.text(get_seed_name(k), UIK.text_body());
+        grow_secs := get_seed_grow_time(k).(int);
+        UIK.text(format_string("%s grow", {grow_secs}), UIK.text_body());
+        UIK.panel_end();
+
+        btn_bg : UIK.Panel_Background_Kind;
+        if can_afford {
+            btn_bg = .BUTTON_BASIC_GREEN;
+        } else {
+            btn_bg = .BUTTON_BASIC_RED;
+        }
+        btn_desc := UIK.widget_desc_button_default(btn_bg);
+        btn_desc.panel.width = UIK.pixels(90);
+        btn_desc.panel.height = UIK.pixels(44);
+        price_label := format_string("% G", {price});
+        buy_handles[k] = UIK.button(format_string("buy_seed_%", {k}), price_label, btn_desc);
+
+        UIK.panel_end();
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+
+    close_row := UIK.layout_row();
+    close_row.width = UIK.flex(1);
+    close_row.height = UIK.fit();
+    close_row.padding = v4{10, 8, 10, 8};
+    UIK.panel_begin(close_row);
+    close_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_RED);
+    close_desc.panel.width = UIK.flex(1);
+    close_desc.panel.height = UIK.pixels(44);
+    close_btn := UIK.button("seed_shop_close", "Close", close_desc);
+    UIK.panel_end();
+
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) || UIK.clicked(close_btn) {
+        player.show_seed_shop = false;
+    }
+
+    for k: 0..SEED_COUNT - 1 {
+        if UIK.clicked(buy_handles[k]) {
+            price := get_seed_buy_price(k);
+            if Economy.can_withdraw_currency(player, "Coins", price.(s64)) {
+                Economy.withdraw_currency(player, "Coins", price.(s64));
+                seed_def := g_seed_defs[k];
+                seed_item := Items.create_item_instance(seed_def, 1);
+                will_destroy: bool;
+                if Items.can_move_item_to_inventory(seed_item, player.default_inventory, ref will_destroy) {
+                    Items.move_item_to_inventory(seed_item, player.default_inventory);
+                }
+                sfx := get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+                desc := SFX.default_sfx_desc();
+                desc.volume = 0.5;
+                SFX.play(sfx, desc);
+            }
+        }
+    }
+}

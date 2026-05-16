@@ -1,0 +1,54 @@
+Sell_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Sell Crops");
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        total_coins: int = 0;
+        crops_sold: int = 0;
+
+        items_to_sell: [..]Item_Instance;
+
+        for i: 0..player.default_inventory.capacity - 1 {
+            item := player.default_inventory.get_item(i);
+            if item == null continue;
+            defn := item.get_definition();
+            if defn == null continue;
+            if defn.#type == Crop_Definition {
+                crop_def := defn.(Crop_Definition);
+                total_coins += crop_def.sell_price * item.quantity.(int);
+                crops_sold += item.quantity.(int);
+                items_to_sell.append(item);
+            }
+        }
+
+        if crops_sold == 0 {
+            Notifier.notify(player, "No crops to sell!");
+            return;
+        }
+
+        for i: 0..items_to_sell.count - 1 {
+            item := items_to_sell[i];
+            if #alive(item) {
+                Items.remove_item_from_inventory(item, player.default_inventory);
+                Items.destroy_item_instance(item);
+            }
+        }
+
+        Economy.deposit_currency(player, "Coins", total_coins.(s64));
+
+        sfx := get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+        desc := SFX.default_sfx_desc();
+        desc.entity_to_follow = entity.id;
+        desc.volume = 0.7;
+        SFX.play(sfx, desc);
+
+        msg := format_string("Sold % crops for % coins!", {crops_sold, total_coins});
+        Notifier.notify(player, msg);
+    }
+}

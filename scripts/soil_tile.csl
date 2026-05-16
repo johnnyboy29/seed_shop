@@ -1,0 +1,172 @@
+Tile_State :: enum {
+    EMPTY;
+    GROWING;
+    READY;
+}
+
+find_seed_in_inventory :: proc(player: Player, kind: int) -> Item_Instance {
+    if player.default_inventory.capacity <= 0 return null;
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn == null continue;
+        if defn.#type == Seed_Definition {
+            sd := defn.(Seed_Definition);
+            if sd.kind == kind return item;
+        }
+    }
+    return null;
+}
+
+Soil_Tile :: class : Interactable {
+    plot_index: int @ao_serialize;
+    tile_slot:  int @ao_serialize;
+
+    state:         Tile_State;
+    seed_kind:     int;
+    grow_start_time: float;
+    grow_time_max:   float;
+
+    plant_entity: Entity;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Plant");
+        state         = .EMPTY;
+        seed_kind     = -1;
+        grow_time_max = 30.0;
+
+        plant_entity = Scene.create_entity();
+        pos := entity.local_position;
+        plant_entity.set_local_position({pos.x, pos.y + 0.5});
+        spr := plant_entity.add_component(Sprite_Renderer);
+        spr.layer = -8;
+        plant_entity.set_local_enabled(false);
+    }
+
+    ao_update :: method(dt: float) {
+        if state == .GROWING {
+            if get_time() - grow_start_time >= grow_time_max {
+                state = .READY;
+                update_visual();
+                sfx := get_asset(SFX_Asset, "EvilNintendo_coin-coin_collect_b70e2b.wav");
+                desc := SFX.default_sfx_desc();
+                desc.entity_to_follow = entity.id;
+                desc.volume = 0.5;
+                SFX.play(sfx, desc);
+            }
+        }
+        switch state {
+            case .EMPTY:   this.set_text("Plant");
+            case .GROWING: this.set_text("Growing...");
+            case .READY:   this.set_text("Harvest!");
+        }
+    }
+
+    ao_end :: method() {
+        if #alive(plant_entity) {
+            plant_entity.destroy();
+        }
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if state == .GROWING return false;
+        return player.plot_index == plot_index;
+    }
+
+    on_interact :: method(player: Player) {
+        if player.plot_index != plot_index return;
+        if state == .EMPTY {
+            first_kind: int = -1;
+            type_count: int = 0;
+            for k: 0..SEED_COUNT - 1 {
+                if find_seed_in_inventory(player, k) != null {
+                    if first_kind < 0 first_kind = k;
+                    type_count += 1;
+                }
+            }
+            if type_count == 0 {
+                Notifier.notify(player, "Buy seeds at the Seed Shop first!");
+            } else if type_count == 1 {
+                plant(first_kind, player);
+            } else {
+                player.show_seed_shop    = false;
+                player.pending_tile_slot = tile_slot;
+                player.show_seed_picker  = true;
+            }
+        } else if state == .READY {
+            do_harvest(player);
+        }
+    }
+
+    plant :: method(kind: int, player: Player) {
+        if state != .EMPTY return;
+        item := find_seed_in_inventory(player, kind);
+        if item == null return;
+
+        Items.destroy_item_instance(item, 1);
+
+        state         = .GROWING;
+        seed_kind     = kind;
+        grow_start_time = get_time();
+        grow_time_max   = get_seed_grow_time(kind);
+
+        sfx := get_asset(SFX_Asset, "dig_hole_260994.wav");
+        desc := SFX.default_sfx_desc();
+        desc.entity_to_follow = entity.id;
+        desc.volume = 0.5;
+        SFX.play(sfx, desc);
+
+        update_visual();
+    }
+
+    do_harvest :: method(player: Player) {
+        if state != .READY return;
+        if seed_kind < 0 return;
+
+        if seed_kind < g_crop_defs.count {
+            crop_def  := g_crop_defs[seed_kind];
+            crop_item := Items.create_item_instance(crop_def, 1);
+            will_destroy: bool;
+            if Items.can_move_item_to_inventory(crop_item, player.default_inventory, ref will_destroy) {
+                Items.move_item_to_inventory(crop_item, player.default_inventory);
+            }
+        }
+
+        sfx := get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+        desc := SFX.default_sfx_desc();
+        desc.entity_to_follow = entity.id;
+        desc.volume = 0.7;
+        SFX.play(sfx, desc);
+
+        state     = .EMPTY;
+        seed_kind = -1;
+        update_visual();
+    }
+
+    get_progress :: method() -> float {
+        if state != .GROWING return 0.0;
+        return clamp((get_time() - grow_start_time) / grow_time_max, 0.0, 1.0);
+    }
+
+    update_visual :: method() {
+        if !#alive(plant_entity) return;
+        spr := plant_entity.get_component(Sprite_Renderer);
+        if spr == null return;
+
+        if state == .EMPTY {
+            plant_entity.set_local_enabled(false);
+        } else if state == .GROWING {
+            plant_entity.set_local_enabled(true);
+            plant_entity.set_local_scale({2.0, 2.0});
+            spr.set_texture(get_asset(Texture_Asset, "sprout_f85d1f.png"));
+        } else if state == .READY {
+            plant_entity.set_local_enabled(true);
+            plant_entity.set_local_scale({1.5, 1.5});
+            if seed_kind >= 0 {
+                spr.set_texture(get_asset(Texture_Asset, get_plant_path(seed_kind)));
+            }
+        }
+    }
+}
