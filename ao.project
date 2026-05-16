@@ -1,0 +1,10 @@
+{
+    csl: true
+    projects:
+    [
+        {
+            name: "Garden Game Creation"
+            id: "69e923e588cc7daf6d9cd78e"
+        }
+    ]
+}

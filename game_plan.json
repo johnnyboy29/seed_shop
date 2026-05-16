@@ -1,0 +1,8 @@
+{
+  "game": "Garden Plots",
+  "description": "Multiplayer garden game with individual plots, seed icons, 30-second crop timers, and multi-plant harvesting.",
+  "scene_epics": [{"name":"Garden World","status":"done","tasks":[{"name":"Place vibrant terrain, paths, fences, and four plots","done":true},{"name":"Place six planting cells per plot","done":true}],"verified":true}],
+  "script_epics": [{"name":"Garden Mechanics","status":"done","tasks":[{"name":"Assign individual plots to players","done":true},{"name":"Plant multiple seeds per plot with icons","done":true},{"name":"Show visual 30-second timers and harvest state","done":true},{"name":"Add harvest rewards and SFX","done":true}],"gate_test":"test_gate_garden_mechanics","gate_passed":true}]
+}
+
+

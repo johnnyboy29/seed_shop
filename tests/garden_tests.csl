@@ -1,0 +1,49 @@
+test_gate_garden_mechanics :: proc() {
+    Test.wait_seconds(1.0);
+
+    Test.assert_entity_exists("four plot world exists", "Plot_1");
+    Test.assert_entity_exists("spot 1 exists", "Plant_Spot_1_1");
+    Test.assert_entity_exists("spot 2 exists", "Plant_Spot_1_2");
+    Test.assert_entity_enabled("crop hidden before planting", "Crop_Visual_1_1", false);
+    Test.assert_entity_enabled("seed icon hidden before planting", "Seed_Icon_1_1", false);
+
+    // Player should be assigned Plot_1 and teleported near it by Player.ao_start.
+    Test.assert_player_near("player starts near claimed plot", {-5.7, 2.65}, 1.0);
+
+    // Plant tomato in first cell using the HUD action button.
+    Test.teleport({-6.9, 5.45});
+    Test.wait_seconds(0.75);
+    Test.click_button("seed_tomato");
+    Test.wait_seconds(0.25);
+    Test.click_button("garden_action");
+    Test.wait_seconds(1.0);
+    Test.assert_component_bool("first spot planted", "Plant_Spot_1_1", "Plant_Spot.planted", true);
+    Test.assert_component_bool("first spot not ready immediately", "Plant_Spot_1_1", "Plant_Spot.ready", false);
+    Test.assert_entity_enabled("first crop visible", "Crop_Visual_1_1", true);
+    Test.assert_entity_enabled("first seed icon visible", "Seed_Icon_1_1", true);
+
+    // Plant a second different seed in the same plot to prove multiple plants per plot.
+    Test.teleport({-5.7, 5.45});
+    Test.wait_seconds(0.75);
+    Test.click_button("seed_carrot");
+    Test.wait_seconds(0.25);
+    Test.click_button("garden_action");
+    Test.wait_seconds(1.0);
+    Test.assert_component_bool("second spot planted", "Plant_Spot_1_2", "Plant_Spot.planted", true);
+    Test.assert_entity_enabled("second crop visible", "Crop_Visual_1_2", true);
+    Test.assert_entity_enabled("second seed icon visible", "Seed_Icon_1_2", true);
+
+    // Timer should mature both plants after 30 seconds.
+    Test.wait_seconds(31.0);
+    Test.assert_component_bool("first spot ready after timer", "Plant_Spot_1_1", "Plant_Spot.ready", true);
+    Test.assert_component_bool("second spot ready after timer", "Plant_Spot_1_2", "Plant_Spot.ready", true);
+    Test.screenshot("garden_ready_to_harvest");
+
+    // Harvest one plant and verify reward + reset.
+    Test.teleport({-6.9, 5.45});
+    Test.wait_seconds(0.75);
+    Test.click_button("garden_action");
+    Test.wait_seconds(1.5);
+    Test.assert_balance("one harvest awarded", "Harvests", 1);
+    Test.assert_component_bool("harvested spot reset", "Plant_Spot_1_1", "Plant_Spot.planted", false);
+}

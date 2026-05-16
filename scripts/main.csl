@@ -1,0 +1,380 @@
+import "core:ao"
+
+GROW_SECONDS :: 30.0;
+INTERACT_RANGE :: 1.35;
+PLOT_COUNT :: 4;
+SPOTS_PER_PLOT :: 6;
+
+Seed_Kind :: enum {
+    TOMATO;
+    CARROT;
+    CORN;
+    SUNFLOWER;
+}
+
+// Game wide systems
+ao_before_scene_load :: proc() {
+    Economy.register_currency("Harvests", get_asset(Texture_Asset, "tomato-plant_3c4b1c.png"));
+}
+
+ao_start :: proc() {
+}
+
+ao_update :: proc(dt: float) {
+}
+
+ao_late_update :: proc(dt: float) {
+}
+
+seed_name :: proc(kind: Seed_Kind) -> string {
+    switch kind {
+        case .TOMATO: return "Tomato";
+        case .CARROT: return "Carrot";
+        case .CORN: return "Corn";
+        case .SUNFLOWER: return "Sun";
+    }
+    return "Seed";
+}
+
+seed_icon_asset :: proc(kind: Seed_Kind) -> Texture_Asset {
+    switch kind {
+        case .TOMATO: return get_asset(Texture_Asset, "seed_packet_tomato_3b8b05.png");
+        case .CARROT: return get_asset(Texture_Asset, "seed_bag_carrot_dbd47f.png");
+        case .CORN: return get_asset(Texture_Asset, "seed_packet_corn_e50055.png");
+        case .SUNFLOWER: return get_asset(Texture_Asset, "sunflower_seed_bag_6f73b7.png");
+    }
+    return get_asset(Texture_Asset, "seed_packet_tomato_3b8b05.png");
+}
+
+crop_asset :: proc(kind: Seed_Kind, mature: bool) -> Texture_Asset {
+    if !mature {
+        return get_asset(Texture_Asset, "seedling_d77c07.png");
+    }
+    switch kind {
+        case .TOMATO: return get_asset(Texture_Asset, "tomato-plant_3c4b1c.png");
+        case .CARROT: return get_asset(Texture_Asset, "Carrot Plant (Growing)_d83107.png");
+        case .CORN: return get_asset(Texture_Asset, "potato_plant_d93c6b.png");
+        case .SUNFLOWER: return get_asset(Texture_Asset, "Carrot Plant (Growing)_d83107.png");
+    }
+    return get_asset(Texture_Asset, "tomato-plant_3c4b1c.png");
+}
+
+Garden_Plot :: class : Component {
+    plot_index: s64 @ao_serialize;
+    owner_id: string;
+    owner_name: string;
+
+    is_owned_by :: method(player: Player) -> bool {
+        if player == null return false;
+        return owner_id == player.get_user_id();
+    }
+
+    is_free :: method() -> bool {
+        return owner_id.count == 0;
+    }
+
+    claim :: method(player: Player) {
+        owner_id = player.get_user_id();
+        owner_name = player.get_username();
+    }
+
+    release_if_owner :: method(player: Player) {
+        if is_owned_by(player) {
+            owner_id = "";
+            owner_name = "";
+            for spot: component_iterator(Plant_Spot) {
+                if spot.plot == this {
+                    spot.clear_crop();
+                }
+            }
+        }
+    }
+}
+
+Plant_Spot :: class : Component {
+    plot: Garden_Plot @ao_serialize;
+    crop_visual: Entity @ao_serialize;
+    seed_icon: Entity @ao_serialize;
+
+    planted: bool;
+    ready: bool;
+    planted_at: float;
+    seed_kind: Seed_Kind;
+    harvest_fx_timer: float;
+    base_visual_pos: v2;
+
+    ao_start :: method() {
+        if #alive(crop_visual) {
+            base_visual_pos = crop_visual.local_position;
+        }
+        update_visuals();
+    }
+
+    ao_update :: method(dt: float) {
+        if planted && !ready {
+            elapsed := get_time() - planted_at;
+            if elapsed >= GROW_SECONDS {
+                ready = true;
+                update_visuals();
+            }
+        }
+
+        if harvest_fx_timer > 0 {
+            harvest_fx_timer -= dt;
+            if #alive(crop_visual) {
+                bob := (0.8 - harvest_fx_timer) * 0.7;
+                crop_visual.set_local_position(base_visual_pos + v2{0, bob});
+                scale := 0.55 + harvest_fx_timer * 0.35;
+                crop_visual.set_local_scale({scale, scale});
+            }
+            if harvest_fx_timer <= 0 && #alive(crop_visual) {
+                crop_visual.set_local_position(base_visual_pos);
+                crop_visual.set_local_scale({0.55, 0.55});
+                update_visuals();
+            }
+        }
+    }
+
+    plant :: method(kind: Seed_Kind) {
+        if planted return;
+        planted = true;
+        ready = false;
+        planted_at = get_time();
+        seed_kind = kind;
+        harvest_fx_timer = 0;
+        update_visuals();
+        play_spot_sfx(get_asset(SFX_Asset, "plant_seed_e1926f.wav"), 0.35);
+    }
+
+    harvest :: method(player: Player) {
+        if !planted || !ready return;
+        Economy.deposit_currency(player, "Harvests", 1);
+        play_spot_sfx(get_asset(SFX_Asset, "collect_coin_9b5b9c.wav"), 0.6);
+        harvest_fx_timer = 0.8;
+        planted = false;
+        ready = false;
+        planted_at = 0;
+        update_visuals();
+    }
+
+    clear_crop :: method() {
+        planted = false;
+        ready = false;
+        planted_at = 0;
+        harvest_fx_timer = 0;
+        update_visuals();
+    }
+
+    progress :: method() -> float {
+        if !planted return 0;
+        if ready return 1;
+        return clamp((get_time() - planted_at) / GROW_SECONDS, 0, 1);
+    }
+
+    update_visuals :: method() {
+        if #alive(crop_visual) {
+            crop_visual.set_local_enabled(planted || harvest_fx_timer > 0);
+            if planted {
+                sprite := crop_visual.get_component(Sprite_Renderer);
+                if sprite != null {
+                    sprite.set_texture(crop_asset(seed_kind, ready));
+                    if ready {
+                        sprite.color = {1.15, 1.15, 1.15, 1};
+                    } else {
+                        sprite.color = {0.75, 1.0, 0.75, 1};
+                    }
+                }
+                if ready {
+                    crop_visual.set_local_scale({0.72, 0.72});
+                } else {
+                    crop_visual.set_local_scale({0.42 + progress() * 0.25, 0.42 + progress() * 0.25});
+                }
+                crop_visual.set_local_position(base_visual_pos);
+            }
+        }
+        if #alive(seed_icon) {
+            seed_icon.set_local_enabled(planted);
+            sprite := seed_icon.get_component(Sprite_Renderer);
+            if sprite != null {
+                sprite.set_texture(seed_icon_asset(seed_kind));
+                if ready {
+                    sprite.color = {1, 1, 0.65, 1};
+                } else {
+                    sprite.color = {1, 1, 1, 0.92};
+                }
+            }
+        }
+    }
+
+    play_spot_sfx :: method(asset: SFX_Asset, volume: float) {
+        desc := SFX.default_sfx_desc();
+        desc.entity_to_follow = entity.id;
+        desc.volume = volume;
+        desc.speed_perturb = 0.08;
+        SFX.play(asset, desc);
+    }
+}
+
+find_free_plot :: proc() -> Garden_Plot {
+    for plot: component_iterator(Garden_Plot) {
+        if plot.is_free() return plot;
+    }
+    return null;
+}
+
+find_nearest_owned_spot :: proc(player: Player) -> Plant_Spot {
+    nearest: Plant_Spot = null;
+    nearest_dist := INTERACT_RANGE * INTERACT_RANGE;
+    player_pos := player.entity.local_position;
+    for spot: component_iterator(Plant_Spot) {
+        if spot.plot == null continue;
+        if !spot.plot.is_owned_by(player) continue;
+        d := length_squared(spot.entity.local_position - player_pos);
+        if d <= nearest_dist {
+            nearest_dist = d;
+            nearest = spot;
+        }
+    }
+    return nearest;
+}
+
+// Per player state
+Player :: class : Player_Base {
+    assigned_plot: Garden_Plot;
+    selected_seed: Seed_Kind;
+    last_near_spot: Plant_Spot;
+
+    ao_start :: method() {
+        selected_seed = .TOMATO;
+        assigned_plot = find_free_plot();
+        if assigned_plot != null {
+            assigned_plot.claim(this);
+            teleport_to_plot();
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        if assigned_plot == null || !#alive(assigned_plot) || !assigned_plot.is_owned_by(this) {
+            assigned_plot = find_free_plot();
+            if assigned_plot != null {
+                assigned_plot.claim(this);
+            }
+        }
+        last_near_spot = find_nearest_owned_spot(this);
+    }
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_garden_hud(this);
+            draw_world_growth_ui(this);
+        }
+    }
+
+    ao_end :: method() {
+        if assigned_plot != null && #alive(assigned_plot) {
+            assigned_plot.release_if_owner(this);
+        }
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+    }
+
+    teleport_to_plot :: method() {
+        if assigned_plot == null || !#alive(assigned_plot) return;
+        entity.set_local_position(assigned_plot.entity.local_position + v2{0, -2.15});
+        entity.mark_teleported();
+    }
+}
+
+draw_seed_button :: proc(id: string, label: string, icon: Texture_Asset, selected: bool) -> UIK.Interact_Handle {
+    desc := UIK.widget_desc_button_auto_default();
+    desc.panel.width = UIK.pixels(132);
+    desc.panel.height = UIK.pixels(76);
+    desc.panel.axis = .HORIZONTAL;
+    desc.panel.gap = 6;
+    desc.label_text = UIK.text_body();
+    if selected {
+        desc.panel.tint = {0.65, 1.0, 0.55, 1};
+    }
+    return UIK.icon_button_label(id, icon, label, desc);
+}
+
+draw_garden_hud :: proc(player: Player) {
+    UIK.begin(UIK.window(UI.get_safe_screen_rect().bottom_rect().grow_top(150).inset(0, 190, 12, 190)));
+    row := UIK.layout_row(UIK.flex(1), UIK.flex(1), 10);
+    row.padding = {12, 14, 12, 14};
+    row.cross_align = .CENTER;
+    UIK.panel_begin(row);
+
+    tomato := draw_seed_button("seed_tomato", "Tom", seed_icon_asset(.TOMATO), player.selected_seed == .TOMATO);
+    carrot := draw_seed_button("seed_carrot", "Car", seed_icon_asset(.CARROT), player.selected_seed == .CARROT);
+    corn := draw_seed_button("seed_corn", "Corn", seed_icon_asset(.CORN), player.selected_seed == .CORN);
+    sun := draw_seed_button("seed_sun", "Sun", seed_icon_asset(.SUNFLOWER), player.selected_seed == .SUNFLOWER);
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    action_label := "Stand on your plot";
+    disabled := true;
+    if player.last_near_spot != null && #alive(player.last_near_spot) {
+        if !player.last_near_spot.planted {
+            action_label = format_string("Plant %", {seed_name(player.selected_seed)});
+            disabled = false;
+        } else if player.last_near_spot.ready {
+            action_label = "Harvest";
+            disabled = false;
+        } else {
+            left := max(0, (GROW_SECONDS - (get_time() - player.last_near_spot.planted_at)).(s64));
+            action_label = format_string("% left", {left});
+        }
+    }
+
+    action_desc := UIK.widget_desc_button_auto_default();
+    action_desc.panel.width = UIK.pixels(230);
+    action_desc.panel.height = UIK.pixels(78);
+    action_desc.disabled = disabled;
+    action := UIK.button("garden_action", action_label, action_desc);
+
+    tp_desc := UIK.widget_desc_button_auto_default();
+    tp_desc.panel.width = UIK.pixels(150);
+    tp_desc.panel.height = UIK.pixels(78);
+    tp := UIK.button("plot_tp", "My Plot", tp_desc);
+
+    UIK.currency(seed_icon_asset(.TOMATO), Economy.get_balance(player, "Harvests"), UIK.text_body());
+
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(tomato) { player.selected_seed = .TOMATO; }
+    if UIK.clicked(carrot) { player.selected_seed = .CARROT; }
+    if UIK.clicked(corn) { player.selected_seed = .CORN; }
+    if UIK.clicked(sun) { player.selected_seed = .SUNFLOWER; }
+    if UIK.clicked(tp) { player.teleport_to_plot(); }
+    if UIK.clicked(action) && !disabled && player.last_near_spot != null && #alive(player.last_near_spot) {
+        if !player.last_near_spot.planted {
+            player.last_near_spot.plant(player.selected_seed);
+        } else if player.last_near_spot.ready {
+            player.last_near_spot.harvest(player);
+        }
+    }
+}
+
+draw_world_growth_ui :: proc(player: Player) {
+    opts := World_Progress_Bar.default_options();
+    opts.y_bias = 0.85;
+    opts.width = 0.88;
+    opts.height = 0.12;
+    for spot: component_iterator(Plant_Spot) {
+        if spot.planted {
+            World_Progress_Bar.draw(spot.entity.local_position, spot.progress(), opts);
+        }
+    }
+}
+
