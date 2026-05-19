@@ -1,0 +1,139 @@
+{
+  "game": "Schleem Farm",
+  "description": "Multiplayer farming game where up to 4 players each own a garden plot, plant seeds from a 20-variety seed shop, grow crops, and sell harvests by weight to earn Schleemlings.",
+  "seed_catalog": [
+    { "id": "carrot",         "rarity": "uncommon",  "cost": 10,   "grow_time": 60,   "weight_kg": 0.5,  "sell_value": 5,    "spawn_chance": 0.25, "asset_catalogId": "d83107cf0795919e" },
+    { "id": "potato",         "rarity": "uncommon",  "cost": 15,   "grow_time": 90,   "weight_kg": 0.8,  "sell_value": 8,    "spawn_chance": 0.22, "asset_catalogId": "d93c6b442db6c0b8" },
+    { "id": "wheat",          "rarity": "uncommon",  "cost": 12,   "grow_time": 75,   "weight_kg": 0.3,  "sell_value": 6,    "spawn_chance": 0.22, "asset_catalogId": "d6bbcd85ddf671a1" },
+    { "id": "tomato",         "rarity": "uncommon",  "cost": 25,   "grow_time": 120,  "weight_kg": 0.6,  "sell_value": 12,   "spawn_chance": 0.18, "asset_catalogId": "3c4b1ca3ce10a295" },
+    { "id": "corn",           "rarity": "uncommon",  "cost": 30,   "grow_time": 150,  "weight_kg": 1.0,  "sell_value": 20,   "spawn_chance": 0.18, "asset_catalogId": "1f6789870ff687a7" },
+    { "id": "pumpkin",        "rarity": "rare",      "cost": 40,   "grow_time": 200,  "weight_kg": 3.0,  "sell_value": 45,   "spawn_chance": 0.14, "asset_catalogId": "d3459046096e1d64" },
+    { "id": "sunflower",      "rarity": "rare",      "cost": 50,   "grow_time": 240,  "weight_kg": 0.5,  "sell_value": 35,   "spawn_chance": 0.13, "asset_catalogId": "290209392be18fb9" },
+    { "id": "watermelon",     "rarity": "rare",      "cost": 60,   "grow_time": 300,  "weight_kg": 5.0,  "sell_value": 75,   "spawn_chance": 0.12, "asset_catalogId": "3c5bbad9e8c9b7ad" },
+    { "id": "strawberry",     "rarity": "rare",      "cost": 45,   "grow_time": 180,  "weight_kg": 0.2,  "sell_value": 30,   "spawn_chance": 0.13, "asset_catalogId": "88b73056dc5a37d8" },
+    { "id": "pineapple",      "rarity": "rare",      "cost": 55,   "grow_time": 270,  "weight_kg": 1.5,  "sell_value": 55,   "spawn_chance": 0.12, "asset_catalogId": "72e255d7044014cc" },
+    { "id": "sweet_potato",   "rarity": "rare",      "cost": 35,   "grow_time": 180,  "weight_kg": 1.2,  "sell_value": 40,   "spawn_chance": 0.14, "asset_catalogId": "566afcd8927d881f" },
+    { "id": "giant_pumpkin",  "rarity": "legendary", "cost": 150,  "grow_time": 500,  "weight_kg": 15.0, "sell_value": 200,  "spawn_chance": 0.06, "asset_catalogId": "99c35c8d6c75cf7f" },
+    { "id": "dragon_fruit",   "rarity": "legendary", "cost": 200,  "grow_time": 600,  "weight_kg": 2.0,  "sell_value": 250,  "spawn_chance": 0.05, "asset_catalogId": "2f7da39edc30b54b" },
+    { "id": "golden_wheat",   "rarity": "legendary", "cost": 175,  "grow_time": 450,  "weight_kg": 0.8,  "sell_value": 190,  "spawn_chance": 0.06, "asset_catalogId": "b029f7ce24919a67" },
+    { "id": "neon_berry",     "rarity": "legendary", "cost": 250,  "grow_time": 700,  "weight_kg": 0.4,  "sell_value": 300,  "spawn_chance": 0.05, "asset_catalogId": "fcb8eac6e97003d9" },
+    { "id": "giant_tomato",   "rarity": "legendary", "cost": 125,  "grow_time": 400,  "weight_kg": 4.0,  "sell_value": 180,  "spawn_chance": 0.06, "asset_catalogId": "a8329ff9c8868ce4" },
+    { "id": "rainbow_melon",  "rarity": "exotic",    "cost": 500,  "grow_time": 900,  "weight_kg": 20.0, "sell_value": 800,  "spawn_chance": 0.02, "asset_catalogId": "3c5bbad9e8c9b7ad" },
+    { "id": "cosmic_pine",    "rarity": "exotic",    "cost": 600,  "grow_time": 1000, "weight_kg": 5.0,  "sell_value": 750,  "spawn_chance": 0.015,"asset_catalogId": "75a418e0f669cd83" },
+    { "id": "ancient_corn",   "rarity": "exotic",    "cost": 750,  "grow_time": 1200, "weight_kg": 8.0,  "sell_value": 1100, "spawn_chance": 0.01, "asset_catalogId": "1f6789870ff687a7" },
+    { "id": "divine_carrot",  "rarity": "exotic",    "cost": 1000, "grow_time": 1500, "weight_kg": 3.0,  "sell_value": 2000, "spawn_chance": 0.005,"asset_catalogId": "1bd826d000a4f2b8" }
+  ],
+  "scene_epics": [
+    {
+      "name": "Main Farm Environment",
+      "status": "pending",
+      "tasks": [
+        { "name": "Download all required assets (grass, barn, fence, watering can, coin icon, market stalls, seedling, crop plants, seed bags)", "done": false },
+        { "name": "Tile grass ground to cover full play area", "done": false },
+        { "name": "Place central barn as main visual landmark", "done": false },
+        { "name": "Line perimeter with wooden fence segments", "done": false },
+        { "name": "Add decorative watering cans and hay props around plots", "done": false }
+      ],
+      "verified": false
+    },
+    {
+      "name": "Player Garden Plots",
+      "status": "pending",
+      "tasks": [
+        { "name": "Place 4 large tilled soil garden plot entities in a 2x2 grid in the center", "done": false },
+        { "name": "Add Plot 1-4 signs in front of each plot", "done": false }
+      ],
+      "verified": false
+    },
+    {
+      "name": "Shop Zones",
+      "status": "pending",
+      "tasks": [
+        { "name": "Place gear shop market stall on the left side with label", "done": false },
+        { "name": "Place seed shop stall in top area with label", "done": false },
+        { "name": "Place sell shop stall on the right side with label", "done": false }
+      ],
+      "verified": false
+    }
+  ],
+  "script_epics": [
+    {
+      "name": "Economy & Currency",
+      "status": "pending",
+      "tasks": [
+        { "name": "Register Schleemlings currency with coin icon in ao_before_scene_load", "done": false },
+        { "name": "Give 10 Schleemlings to new players on first join (deposit only if balance == 0)", "done": false }
+      ],
+      "gate_test": "test_gate_economy",
+      "gate_passed": false
+    },
+    {
+      "name": "Plot Assignment",
+      "status": "pending",
+      "tasks": [
+        { "name": "Create Plot_Manager scene component tracking 4 plot entities and their assigned player IDs", "done": false },
+        { "name": "On player join, find first free plot and assign; on player leave, free the plot", "done": false },
+        { "name": "Add teleport-to-my-plot UIK button to player HUD", "done": false }
+      ],
+      "gate_test": "test_gate_plot_assignment",
+      "gate_passed": false
+    },
+    {
+      "name": "Seed Shop",
+      "status": "pending",
+      "tasks": [
+        { "name": "Define seed_catalog data (20 entries: id, rarity, cost, grow_time, weight_kg, sell_value, spawn_chance, asset path)", "done": false },
+        { "name": "Create Seed_Shop interactable that opens UIK panel with 6 randomized seed slots (weighted by spawn_chance)", "done": false },
+        { "name": "Purchase flow: deduct Schleemlings, add seed item to All Out inventory", "done": false }
+      ],
+      "gate_test": "test_gate_seed_shop",
+      "gate_passed": false
+    },
+    {
+      "name": "Crop Planting & Growing",
+      "status": "pending",
+      "tasks": [
+        { "name": "Create Crop_Plot component: manages a 5x8 grid of 40 Crop_Slot child entities within the player's assigned plot", "done": false },
+        { "name": "Create Crop_Slot interactable: when player walks up with seed in hand, plant it; show sprout sprite", "done": false },
+        { "name": "Crop grows through 3 stages (sprout->growing->ready) timed by grow_time; update sprite per stage", "done": false },
+        { "name": "Play plant SFX on planting, sparkle SFX on each growth stage transition", "done": false }
+      ],
+      "gate_test": "test_gate_crop_growing",
+      "gate_passed": false
+    },
+    {
+      "name": "Harvesting & Sell Shop",
+      "status": "pending",
+      "tasks": [
+        { "name": "Harvest interactable on ready crops: add harvested crop item (with weight_kg) to player inventory, clear slot", "done": false },
+        { "name": "Play harvest SFX and coin burst particle animation on collect", "done": false },
+        { "name": "Create Sell_Shop interactable: sell all crops in inventory, total = sum of (weight_kg * rate_per_kg), deposit Schleemlings", "done": false },
+        { "name": "Show sell total in UIK panel with coin animation and cha-ching SFX", "done": false }
+      ],
+      "gate_test": "test_gate_harvest_sell",
+      "gate_passed": false
+    },
+    {
+      "name": "Gear Shop",
+      "status": "pending",
+      "tasks": [
+        { "name": "Define 3 upgrades: Fertilizer ($75, 50% faster growth), Heavy Soil ($150, 1.5x crop weight), Golden Watering Can ($300, 2x growth speed)", "done": false },
+        { "name": "Create Gear_Shop interactable with UIK upgrade panel; track owned upgrades on player class fields", "done": false },
+        { "name": "Apply upgrade multipliers to grow_time and weight_kg in Crop_Slot logic", "done": false }
+      ],
+      "gate_test": "test_gate_gear_shop",
+      "gate_passed": false
+    },
+    {
+      "name": "HUD",
+      "status": "pending",
+      "tasks": [
+        { "name": "Display Schleemlings balance (coin icon + number) top-left via UIK in ao_late_update", "done": false },
+        { "name": "Show Seed Shop and Sell Shop teleport buttons with their rarity highlight colors", "done": false },
+        { "name": "Show My Plot label and teleport button", "done": false }
+      ],
+      "gate_test": "test_gate_hud",
+      "gate_passed": false
+    }
+  ]
+}

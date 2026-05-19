@@ -1,0 +1,123 @@
+Gear_Shop :: class : Interactable {
+    ao_start :: method() {
+        set_listener(this);
+        set_text("Gear Shop");
+        radius = 5.0;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        player.show_gear_shop = true;
+    }
+}
+
+draw_gear_shop_ui :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window(), 15));
+
+    shell := UIK.panel_modal(.BLACK);
+    shell.gap = 0;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Gear Shop");
+    exit_handle := UIK.title_area(title_desc);
+
+    coin_icon := get_asset(Texture_Asset, "coin_icon_485351.png");
+    balance := Economy.get_balance(player, "Schleemlings");
+
+    content := UIK.layout_column();
+    content.width   = UIK.flex(1);
+    content.height  = UIK.flex(1);
+    content.padding = v4{16, 16, 16, 16};
+    content.gap     = 12;
+    UIK.panel_begin(content);
+
+    bal_row := UIK.layout_row(UIK.flex(1), UIK.pixels(36), 8);
+    bal_row.cross_align = .CENTER;
+    UIK.panel_begin(bal_row);
+    UIK.text("Balance:", UIK.text_body());
+    UIK.currency(coin_icon, balance, UIK.text_body());
+    UIK.panel_end();
+    UIK.divider();
+
+    fertilizer_btn  := _draw_gear_card("fertilizer_card",   "Fertilizer",         "50% faster crop growth",  75,   player.has_fertilizer,  player);
+    heavy_soil_btn  := _draw_gear_card("heavy_soil_card",   "Heavy Soil",          "Crops weigh 1.5x more",   150,  player.has_heavy_soil,  player);
+    golden_can_btn  := _draw_gear_card("golden_can_card",   "Golden Watering Can", "2x crop growth speed",    300,  player.has_golden_can,  player);
+
+    UIK.panel_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.show_gear_shop = false;
+    }
+
+    if UIK.clicked(fertilizer_btn) && !player.has_fertilizer {
+        if Economy.can_withdraw_currency(player, "Schleemlings", 75) {
+            Economy.withdraw_currency(player, "Schleemlings", 75);
+            player.has_fertilizer = true;
+            _play_buy_sfx();
+        }
+    }
+
+    if UIK.clicked(heavy_soil_btn) && !player.has_heavy_soil {
+        if Economy.can_withdraw_currency(player, "Schleemlings", 150) {
+            Economy.withdraw_currency(player, "Schleemlings", 150);
+            player.has_heavy_soil = true;
+            _play_buy_sfx();
+        }
+    }
+
+    if UIK.clicked(golden_can_btn) && !player.has_golden_can {
+        if Economy.can_withdraw_currency(player, "Schleemlings", 300) {
+            Economy.withdraw_currency(player, "Schleemlings", 300);
+            player.has_golden_can = true;
+            _play_buy_sfx();
+        }
+    }
+}
+
+_draw_gear_card :: proc(id: string, name: string, description: string, cost: s64, owned: bool, player: Player) -> UIK.Interact_Handle {
+    balance := Economy.get_balance(player, "Schleemlings");
+
+    bg: UIK.Panel_Background_Kind = .BUTTON_BASIC_GREEN;
+    if owned       bg = .BUTTON_BASIC_GREY;
+    if !owned && balance < cost bg = .BUTTON_BASIC_RED;
+
+    card_desc := UIK.card_desc(UIK.flex(1), UIK.pixels(90), {0.8, 0.7, 0.3, 1.0}, .LANDSCAPE, 0.15, 0.15, 0.25);
+    UIK.card_begin(id, card_desc);
+
+    UIK.card_zone(.MEDIA);
+    watering_tex := get_asset(Texture_Asset, "watering can_59a56f.png");
+    UIK.image_fitted(watering_tex, UIK.image_desc(.CONTAIN));
+    UIK.card_zone_end();
+
+    UIK.card_zone(.HEADER);
+    UIK.text(name, UIK.text_button());
+    UIK.text(description, UIK.text_body());
+    UIK.card_zone_end();
+
+    UIK.card_zone(.FOOTER);
+    label: string;
+    if owned {
+        label = "Owned";
+    } else {
+        label = format_string("$ %", {cost});
+    }
+    btn_d := UIK.widget_desc_button_default(bg);
+    btn_d.panel.width  = UIK.pixels(110);
+    btn_d.panel.height = UIK.pixels(50);
+    h := UIK.button(format_string("buy_%", {id}), label, btn_d);
+    UIK.card_zone_end();
+
+    UIK.card_end();
+    return h;
+}
+
+_play_buy_sfx :: proc() {
+    desc := SFX.default_sfx_desc();
+    desc.volume = 0.6;
+    SFX.play(get_asset(SFX_Asset, "$AO/sfx/clicks/click_01.wav"), desc);
+}

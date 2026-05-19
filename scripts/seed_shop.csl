@@ -1,0 +1,106 @@
+Seed_Shop :: class : Interactable {
+    ao_start :: method() {
+        set_listener(this);
+        set_text("Seed Shop");
+        radius = 5.0;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return true;
+    }
+
+    on_interact :: method(player: Player) {
+        player.show_seed_shop = true;
+    }
+}
+
+draw_seed_shop_ui :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window(), 15));
+
+    shell := UIK.panel_modal(.BLACK);
+    shell.gap = 0;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Seed Shop");
+    exit_handle := UIK.title_area(title_desc);
+
+    content := UIK.layout_column();
+    content.width   = UIK.flex(1);
+    content.height  = UIK.flex(1);
+    content.padding = v4{12, 12, 12, 12};
+    content.gap     = 6;
+    UIK.list_begin("seed_shop_list", content);
+
+    coin_icon := get_asset(Texture_Asset, "coin_icon_485351.png");
+    balance := Economy.get_balance(player, "Schleemlings");
+
+    bal_row := UIK.layout_row(UIK.flex(1), UIK.pixels(40), 8);
+    bal_row.cross_align = .CENTER;
+    UIK.panel_begin(bal_row);
+    UIK.text("Balance:", UIK.text_body());
+    UIK.currency(coin_icon, balance, UIK.text_body());
+    UIK.panel_end();
+    UIK.divider();
+
+    buy_handles: [20]UIK.Interact_Handle;
+
+    for i: 0..g_seed_defs.count - 1 {
+        sd  := g_seed_defs[i];
+        col := rarity_color(sd.rarity_label);
+        can_afford := balance >= sd.cost;
+
+        bg: UIK.Panel_Background_Kind = .BUTTON_BASIC_GREEN;
+        if !can_afford bg = .BUTTON_BASIC_GREY;
+
+        card_desc := UIK.card_desc(UIK.flex(1), UIK.pixels(80), col, .LANDSCAPE, 0.25, 0.15, 0.25);
+        UIK.card_begin(format_string("sc_%", {i}), card_desc);
+
+        UIK.card_zone(.MEDIA);
+        UIK.image_fitted(sd.get_icon(), UIK.image_desc(.CONTAIN));
+        UIK.card_zone_end();
+
+        UIK.card_zone(.HEADER);
+        UIK.text(sd.get_name(), UIK.text_button());
+        UIK.text(format_string("%  %kg  %s grow", {sd.rarity_label, format_float(sd.weight_kg, decimals=1), sd.grow_time.(s64)}), UIK.text_body());
+        UIK.card_zone_end();
+
+        UIK.card_zone(.FOOTER);
+        btn_d := UIK.widget_desc_button_default(bg);
+        btn_d.panel.width  = UIK.pixels(110);
+        btn_d.panel.height = UIK.pixels(50);
+        buy_handles[i] = UIK.button(format_string("buy_%", {i}), format_string("$ %", {sd.cost}), btn_d);
+        UIK.card_zone_end();
+
+        UIK.card_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) {
+        player.show_seed_shop = false;
+    }
+
+    for i: 0..g_seed_defs.count - 1 {
+        if UIK.clicked(buy_handles[i]) {
+            sd := g_seed_defs[i];
+            if !Economy.can_withdraw_currency(player, "Schleemlings", sd.cost) continue;
+
+            Economy.withdraw_currency(player, "Schleemlings", sd.cost);
+
+            seed_item := Items.create_item_instance(sd, 1);
+            will_destroy: bool;
+            if Items.can_move_item_to_inventory(seed_item, player.default_inventory, ref will_destroy) {
+                Items.move_item_to_inventory(seed_item, player.default_inventory);
+            } else {
+                Items.destroy_item_instance(seed_item);
+                Economy.deposit_currency(player, "Schleemlings", sd.cost);
+            }
+
+            desc := SFX.default_sfx_desc();
+            desc.volume = 0.6;
+            SFX.play(get_asset(SFX_Asset, "$AO/sfx/clicks/click_01.wav"), desc);
+        }
+    }
+}

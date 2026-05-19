@@ -1,0 +1,129 @@
+Sell_Shop :: class : Interactable {
+    ao_start :: method() {
+        set_listener(this);
+        set_text("Sell Crops");
+        radius = 5.0;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return _has_crops(player);
+    }
+
+    on_interact :: method(player: Player) {
+        player.show_sell_shop = true;
+    }
+
+    _has_crops :: method(player: Player) -> bool {
+        for s: 0..player.default_inventory.capacity - 1 {
+            item := player.default_inventory.get_item(s);
+            if item == null continue;
+            if !#alive(item) continue;
+            if item.get_definition().#type == Crop_Definition return true;
+        }
+        return false;
+    }
+}
+
+// Returns total sell value of all crops in inventory without selling
+_calc_sell_total :: proc(player: Player) -> s64 {
+    total: s64 = 0;
+    for s: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(s);
+        if item == null continue;
+        if !#alive(item) continue;
+        def := item.get_definition();
+        if def.#type != Crop_Definition continue;
+        crop := def.(Crop_Definition);
+        val := crop.sell_value;
+        if player.has_heavy_soil val = val + val / 2;
+        total += val * item.quantity;
+    }
+    return total;
+}
+
+draw_sell_shop_ui :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_small(), 15));
+
+    shell := UIK.panel_modal(.BLUE_WITH_FOOTER);
+    shell.gap = 0;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("Sell Crops");
+    exit_handle := UIK.title_area(title_desc);
+
+    UIK.spacer(UIK.pixels(1), UIK.flex(0.2));
+
+    total := _calc_sell_total(player);
+    coin_icon := get_asset(Texture_Asset, "coin_icon_485351.png");
+
+    label_row := UIK.layout_column();
+    label_row.width = UIK.flex(1);
+    label_row.height = UIK.fit();
+    label_row.gap = 8;
+    label_row.cross_align = .CENTER;
+    UIK.panel_begin(label_row);
+    UIK.text("Crops ready to sell:", UIK.text_body());
+    UIK.currency(coin_icon, total, UIK.text_title());
+    UIK.panel_end();
+
+    UIK.spacer(UIK.pixels(1), UIK.flex(1));
+
+    btn_row := UIK.layout_row(UIK.flex(1), UIK.pixels(70), 12);
+    UIK.panel_begin(btn_row);
+
+    cancel_d := UIK.widget_desc_button_default(.BUTTON_BASIC_RED);
+    cancel_d.panel.width  = UIK.flex(1);
+    cancel_d.panel.height = UIK.pixels(70);
+    cancel_btn := UIK.button("sell_cancel", "Cancel", cancel_d);
+
+    sell_d := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+    sell_d.panel.width  = UIK.flex(1);
+    sell_d.panel.height = UIK.pixels(70);
+    sell_btn := UIK.button("sell_confirm", format_string("Sell $%", {total}), sell_d);
+
+    UIK.panel_end();
+    UIK.spacer(UIK.pixels(1), UIK.flex(0.1));
+
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(exit_handle) || UIK.clicked(cancel_btn) {
+        player.show_sell_shop = false;
+    }
+
+    if UIK.clicked(sell_btn) {
+        _do_sell(player);
+        player.show_sell_shop = false;
+    }
+}
+
+_do_sell :: proc(player: Player) {
+    earned: s64 = 0;
+    items_to_remove: [..]Item_Instance;
+
+    for s: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(s);
+        if item == null continue;
+        if !#alive(item) continue;
+        def := item.get_definition();
+        if def.#type != Crop_Definition continue;
+        crop := def.(Crop_Definition);
+        val := crop.sell_value;
+        if player.has_heavy_soil val = val + val / 2;
+        earned += val * item.quantity;
+        items_to_remove.append(item);
+    }
+
+    for i: 0..items_to_remove.count - 1 {
+        Items.remove_item_from_inventory(items_to_remove[i], player.default_inventory);
+        Items.destroy_item_instance(items_to_remove[i]);
+    }
+
+    if earned > 0 {
+        Economy.deposit_currency(player, "Schleemlings", earned);
+
+        desc := SFX.default_sfx_desc();
+        desc.volume = 0.8;
+        SFX.play(get_asset(SFX_Asset, "$AO/sfx/coins/coins_01.wav"), desc);
+    }
+}

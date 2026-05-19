@@ -1,0 +1,132 @@
+import "core:ao"
+
+ao_before_scene_load :: proc() {
+    coin_icon := get_asset(Texture_Asset, "coin_icon_485351.png");
+    Economy.register_currency("Schleemlings", coin_icon);
+    Scene.set_auto_save_player_inventory(true);
+    register_seeds();
+}
+
+ao_start :: proc() {
+}
+
+ao_update :: proc(dt: float) {
+}
+
+ao_late_update :: proc(dt: float) {
+}
+
+Player :: class : Player_Base {
+    has_fertilizer:  bool @ao_serialize;
+    has_heavy_soil:  bool @ao_serialize;
+    has_golden_can:  bool @ao_serialize;
+    _initialized:    bool @ao_serialize;
+
+    show_seed_shop: bool;
+    show_sell_shop: bool;
+    show_gear_shop: bool;
+
+    ao_start :: method() {
+        _claim_plot();
+        if !_initialized {
+            Economy.deposit_currency(this, "Schleemlings", 10);
+            _initialized = true;
+        }
+    }
+
+    _claim_plot :: method() {
+        uid := get_user_id();
+        for plot: component_iterator(Crop_Plot) {
+            if plot.owner_id == uid return;
+        }
+        for plot: component_iterator(Crop_Plot) {
+            if plot.owner_id == "" {
+                plot.owner_id = uid;
+                return;
+            }
+        }
+    }
+
+    ao_update :: method(dt: float) {
+    }
+
+    ao_late_update :: method(dt: float) {
+        if !is_local_or_server() return;
+        draw_farm_hud(this);
+        if show_seed_shop draw_seed_shop_ui(this);
+        if show_sell_shop draw_sell_shop_ui(this);
+        if show_gear_shop draw_gear_shop_ui(this);
+    }
+
+    ao_end :: method() {
+        uid := get_user_id();
+        for plot: component_iterator(Crop_Plot) {
+            if plot.owner_id == uid {
+                plot.owner_id = "";
+                return;
+            }
+        }
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+    }
+}
+
+draw_farm_hud :: proc(player: Player) {
+    coin_icon := get_asset(Texture_Asset, "coin_icon_485351.png");
+    balance := Economy.get_balance(player, "Schleemlings");
+
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+
+    bar := UIK.layout_row(UIK.flex(1), UIK.flex(1), 10);
+    bar.padding = v4{8, 12, 8, 12};
+    bar.cross_align = .CENTER;
+    UIK.panel_begin(bar);
+
+    UIK.currency(coin_icon, balance, UIK.text_body());
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    plot_d := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+    plot_d.panel.width  = UIK.pixels(100);
+    plot_d.panel.height = UIK.pixels(44);
+    plot_btn := UIK.button("hud_my_plot", "My Plot", plot_d);
+
+    seed_d := UIK.widget_desc_button_default(.BUTTON_BASIC_GREY);
+    seed_d.panel.width  = UIK.pixels(110);
+    seed_d.panel.height = UIK.pixels(44);
+    seed_btn := UIK.button("hud_seed_shop", "Seed Shop", seed_d);
+
+    sell_d := UIK.widget_desc_button_default(.BUTTON_BASIC_GREY);
+    sell_d.panel.width  = UIK.pixels(110);
+    sell_d.panel.height = UIK.pixels(44);
+    sell_btn := UIK.button("hud_sell_shop", "Sell Shop", sell_d);
+
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(plot_btn) {
+        uid := player.get_user_id();
+        for plot: component_iterator(Crop_Plot) {
+            if plot.owner_id == uid {
+                player.entity.set_local_position(plot.entity.world_position);
+                break;
+            }
+        }
+    }
+
+    if UIK.clicked(seed_btn) {
+        player.entity.set_local_position({0.0, 16.0});
+    }
+
+    if UIK.clicked(sell_btn) {
+        player.entity.set_local_position({19.0, 0.0});
+    }
+}

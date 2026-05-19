@@ -1,0 +1,96 @@
+Seed_Definition :: class : Item_Definition {
+    short_id:     string;
+    cost:         s64;
+    grow_time:    float;
+    weight_kg:    float;
+    sell_value:   s64;
+    crop_asset:   string;
+    rarity_label: string;
+    spawn_chance: float;
+}
+
+Crop_Definition :: class : Item_Definition {
+    weight_kg:  float;
+    sell_value: s64;
+}
+
+g_seed_defs: [..]Seed_Definition;
+g_crop_defs: [..]Crop_Definition;
+
+register_seeds :: proc() {
+    // Uncommon
+    _reg("carrot",        "Carrot",        "seed_bag_carrot_dbd47f.png",   "Carrot Plant (Growing)_d83107.png", 10,   60.0,   0.5,  5,    .UNCOMMON,  "Uncommon",  0.25);
+    _reg("potato",        "Potato",        "seed packet_62980f.png",        "potato_plant_d93c6b.png",           15,   90.0,   0.8,  8,    .UNCOMMON,  "Uncommon",  0.22);
+    _reg("wheat",         "Wheat",         "seed packet_62980f.png",        "wheat_1_d6bbcd.png",                12,   75.0,   0.3,  6,    .UNCOMMON,  "Uncommon",  0.22);
+    _reg("tomato",        "Tomato",        "seed_packet_tomato_3b8b05.png", "tomato-plant_3c4b1c.png",           25,   120.0,  0.6,  12,   .UNCOMMON,  "Uncommon",  0.18);
+    _reg("corn",          "Corn",          "seed_packet_corn_e50055.png",   "Corn_1f6789.png",                   30,   150.0,  1.0,  20,   .UNCOMMON,  "Uncommon",  0.18);
+    // Rare
+    _reg("pumpkin",       "Pumpkin",       "seed packet_62980f.png",        "Pumpkin lvl 3_d34590.png",          40,   200.0,  3.0,  45,   .RARE,      "Rare",      0.14);
+    _reg("sunflower",     "Sunflower",     "sunflower_seed_bag_6f73b7.png", "sunflower_290209.png",              50,   240.0,  0.5,  35,   .RARE,      "Rare",      0.13);
+    _reg("watermelon",    "Watermelon",    "seed packet_62980f.png",        "Watermelon_3c5bba.png",             60,   300.0,  5.0,  75,   .RARE,      "Rare",      0.12);
+    _reg("strawberry",    "Strawberry",    "seed packet_62980f.png",        "BerryPlantPatch_88b730.png",        45,   180.0,  0.2,  30,   .RARE,      "Rare",      0.13);
+    _reg("pineapple",     "Pineapple",     "seed packet_62980f.png",        "pineapple_72e255.png",              55,   270.0,  1.5,  55,   .RARE,      "Rare",      0.12);
+    _reg("sweet_potato",  "Sweet Potato",  "seed packet_62980f.png",        "Potato_566afc.png",                 35,   180.0,  1.2,  40,   .RARE,      "Rare",      0.14);
+    // Legendary
+    _reg("giant_pumpkin", "Giant Pumpkin", "seed packet_62980f.png",        "Pumpkin lvl 4_99c35c.png",          150,  500.0,  15.0, 200,  .LEGENDARY, "Legendary", 0.06);
+    _reg("dragon_fruit",  "Dragon Fruit",  "seed packet_62980f.png",        "exotic_blox_fruit_2f7da3.png",      200,  600.0,  2.0,  250,  .LEGENDARY, "Legendary", 0.05);
+    _reg("golden_wheat",  "Golden Wheat",  "sunflower_seed_bag_6f73b7.png", "premium_wheat_2_b029f7.png",        175,  450.0,  0.8,  190,  .LEGENDARY, "Legendary", 0.06);
+    _reg("neon_berry",    "Neon Berry",    "seed packet_62980f.png",        "neon_glowing_plant_fcb8ea.png",     250,  700.0,  0.4,  300,  .LEGENDARY, "Legendary", 0.05);
+    _reg("giant_tomato",  "Giant Tomato",  "seed_packet_tomato_3b8b05.png", "Giant Tomato_a8329f.png",           125,  400.0,  4.0,  180,  .LEGENDARY, "Legendary", 0.06);
+    // Exotic
+    _reg("rainbow_melon", "Rainbow Melon", "seed packet_62980f.png",        "Watermelon_3c5bba.png",             500,  900.0,  20.0, 800,  .MYTHIC,    "Exotic",    0.02);
+    _reg("cosmic_pine",   "Cosmic Pine",   "seed packet_62980f.png",        "pineapple_75a418.png",              600,  1000.0, 5.0,  750,  .MYTHIC,    "Exotic",    0.015);
+    _reg("ancient_corn",  "Ancient Corn",  "seed_packet_corn_e50055.png",   "Corn_1f6789.png",                   750,  1200.0, 8.0,  1100, .MYTHIC,    "Exotic",    0.01);
+    _reg("divine_carrot", "Divine Carrot", "seed_bag_carrot_dbd47f.png",    "Carrot_1bd826.png",                 1000, 1500.0, 3.0,  2000, .MYTHIC,    "Exotic",    0.005);
+}
+
+_reg :: proc(id: string, name: string, icon_path: string, crop_path: string,
+             cost: s64, grow_time: float, weight_kg: float, sell_value: s64,
+             tier: Item_Tier, rarity_label: string, spawn_chance: float) {
+    icon := get_asset(Texture_Asset, icon_path);
+    seed_def := Items.register_item_definition(
+        {format_string("seed_%", {id}), format_string("% Seed", {name}), icon, 40, tier},
+        Seed_Definition
+    );
+    seed_def.short_id     = id;
+    seed_def.cost         = cost;
+    seed_def.grow_time    = grow_time;
+    seed_def.weight_kg    = weight_kg;
+    seed_def.sell_value   = sell_value;
+    seed_def.crop_asset   = crop_path;
+    seed_def.rarity_label = rarity_label;
+    seed_def.spawn_chance = spawn_chance;
+    g_seed_defs.append(seed_def);
+
+    crop_icon := get_asset(Texture_Asset, crop_path);
+    crop_def := Items.register_item_definition(
+        {format_string("crop_%", {id}), name, crop_icon, 40, tier},
+        Crop_Definition
+    );
+    crop_def.weight_kg  = weight_kg;
+    crop_def.sell_value = sell_value;
+    g_crop_defs.append(crop_def);
+}
+
+find_seed_def :: proc(short_id: string) -> Seed_Definition {
+    for i: 0..g_seed_defs.count - 1 {
+        if g_seed_defs[i].short_id == short_id return g_seed_defs[i];
+    }
+    return null;
+}
+
+find_crop_def :: proc(short_id: string) -> Crop_Definition {
+    target := format_string("crop_%", {short_id});
+    for i: 0..g_crop_defs.count - 1 {
+        if g_crop_defs[i].get_id() == target return g_crop_defs[i];
+    }
+    return null;
+}
+
+rarity_color :: proc(rarity: string) -> v4 {
+    if rarity == "Uncommon"  return {0.5, 1.0, 0.5, 1.0};
+    if rarity == "Rare"      return {0.4, 0.6, 1.0, 1.0};
+    if rarity == "Legendary" return {1.0, 0.8, 0.2, 1.0};
+    if rarity == "Exotic"    return {1.0, 0.3, 1.0, 1.0};
+    return {1.0, 1.0, 1.0, 1.0};
+}

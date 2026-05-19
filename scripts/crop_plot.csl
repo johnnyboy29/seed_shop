@@ -1,0 +1,232 @@
+// One Crop_Plot per garden plot entity. Manages 5x8=40 crop slots.
+// All slot state is @ao_serialize so it persists and syncs.
+Crop_Plot :: class : Interactable {
+    owner_id: string @ao_serialize;
+
+    slot_seed_id: [40]string @ao_serialize;
+    slot_elapsed: [40]float  @ao_serialize;
+    slot_stage:   [40]s32    @ao_serialize; // 0=empty 1=sprout 2=growing 3=ready
+
+    slot_sprites: [40]Entity;
+
+    cached_owner: Player;
+
+    COLS :: 5;
+    ROWS :: 8;
+
+    ao_start :: method() {
+        set_listener(this);
+        set_text("Farm");
+        radius = 6.0;
+
+        _create_slot_sprites();
+    }
+
+    _create_slot_sprites :: method() {
+        col_offsets: [5]float = {-3.5, -1.75, 0.0, 1.75, 3.5};
+        row_offsets: [8]float = {3.3, 2.3, 1.3, 0.3, -0.7, -1.7, -2.7, -3.7};
+        plot_pos := entity.world_position;
+
+        for row: 0..ROWS - 1 {
+            for col: 0..COLS - 1 {
+                idx := row * COLS + col;
+                e := Scene.create_entity();
+                e.set_local_position({plot_pos.x + col_offsets[col], plot_pos.y + row_offsets[row]});
+                e.set_local_scale({0.55, 0.55});
+                e.add_component(Sprite_Renderer);
+                e.set_local_enabled(false);
+                slot_sprites[idx] = e;
+            }
+        }
+    }
+
+    ao_update :: method(dt: float) {
+        _refresh_owner_cache();
+        _tick_growth(dt);
+        _update_sprites();
+        _update_prompt();
+    }
+
+    _refresh_owner_cache :: method() {
+        if #alive(cached_owner) && cached_owner.get_user_id() == owner_id return;
+        cached_owner = null;
+        if owner_id == "" return;
+        for p: component_iterator(Player) {
+            if p.get_user_id() == owner_id {
+                cached_owner = p;
+                break;
+            }
+        }
+    }
+
+    _tick_growth :: method(dt: float) {
+        for i: 0..39 {
+            if slot_stage[i] == 0 || slot_stage[i] == 3 continue;
+
+            seed_def := find_seed_def(slot_seed_id[i]);
+            if seed_def == null continue;
+
+            grow_time := seed_def.grow_time;
+            if #alive(cached_owner) {
+                if cached_owner.has_fertilizer grow_time *= 0.5;
+                if cached_owner.has_golden_can  grow_time *= 0.5;
+            }
+
+            slot_elapsed[i] += dt;
+            elapsed := slot_elapsed[i];
+
+            old_stage := slot_stage[i];
+            new_stage := slot_stage[i];
+            if elapsed >= grow_time {
+                new_stage = 3;
+            } else if elapsed >= grow_time * 0.5 {
+                new_stage = 2;
+            }
+
+            if new_stage != old_stage {
+                slot_stage[i] = new_stage;
+            }
+        }
+    }
+
+    _update_sprites :: method() {
+        for i: 0..39 {
+            e := slot_sprites[i];
+            if !#alive(e) continue;
+
+            stage := slot_stage[i];
+            if stage == 0 {
+                e.set_local_enabled(false);
+                continue;
+            }
+            e.set_local_enabled(true);
+
+            sr := e.get_component(Sprite_Renderer);
+            if sr == null continue;
+
+            if stage == 1 {
+                sr.set_texture(get_asset(Texture_Asset, "seedling_d77c07.png"));
+            } else if stage == 2 {
+                sr.set_texture(get_asset(Texture_Asset, "sprout_0e326e.png"));
+            } else {
+                seed_def := find_seed_def(slot_seed_id[i]);
+                if seed_def != null {
+                    sr.set_texture(get_asset(Texture_Asset, seed_def.crop_asset));
+                }
+            }
+        }
+    }
+
+    _update_prompt :: method() {
+        if has_ready_crops() {
+            set_text("Harvest");
+        } else if has_empty_slot() {
+            set_text("Plant Seed");
+        } else {
+            set_text("Growing...");
+        }
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player.get_user_id() != owner_id return false;
+        if has_ready_crops() return true;
+        if has_empty_slot() && _get_selected_seed(player) != null return true;
+        return false;
+    }
+
+    on_interact :: method(player: Player) {
+        if has_ready_crops() {
+            _harvest_all(player);
+        } else {
+            seed_def := _get_selected_seed(player);
+            if seed_def != null _plant(player, seed_def);
+        }
+    }
+
+    has_ready_crops :: method() -> bool {
+        for i: 0..39 {
+            if slot_stage[i] == 3 return true;
+        }
+        return false;
+    }
+
+    has_empty_slot :: method() -> bool {
+        for i: 0..39 {
+            if slot_stage[i] == 0 return true;
+        }
+        return false;
+    }
+
+    _get_selected_seed :: method(player: Player) -> Seed_Definition {
+        for s: 0..player.default_inventory.capacity - 1 {
+            item := player.default_inventory.get_item(s);
+            if item == null continue;
+            if !#alive(item) continue;
+            def := item.get_definition();
+            if def.#type == Seed_Definition return def.(Seed_Definition);
+        }
+        return null;
+    }
+
+    _plant :: method(player: Player, seed_def: Seed_Definition) {
+        for i: 0..39 {
+            if slot_stage[i] != 0 continue;
+
+            // Consume one seed from inventory
+            for s: 0..player.default_inventory.capacity - 1 {
+                item := player.default_inventory.get_item(s);
+                if item == null continue;
+                if !#alive(item) continue;
+                if item.get_definition().get_id() != seed_def.get_id() continue;
+                Items.destroy_item_instance(item, 1);
+                break;
+            }
+
+            slot_seed_id[i] = seed_def.short_id;
+            slot_elapsed[i] = 0.0;
+            slot_stage[i]   = 1;
+
+            desc := SFX.default_sfx_desc();
+            desc.entity_to_follow = entity.id;
+            desc.volume = 0.5;
+            SFX.play(get_asset(SFX_Asset, "$AO/sfx/plant/plant_01.wav"), desc);
+            return;
+        }
+    }
+
+    _harvest_all :: method(player: Player) {
+        count: s64 = 0;
+
+        for i: 0..39 {
+            if slot_stage[i] != 3 continue;
+
+            crop_def := find_crop_def(slot_seed_id[i]);
+            if crop_def == null {
+                slot_stage[i]   = 0;
+                slot_seed_id[i] = "";
+                slot_elapsed[i] = 0.0;
+                continue;
+            }
+
+            crop_item := Items.create_item_instance(crop_def, 1);
+            will_destroy: bool;
+            if Items.can_move_item_to_inventory(crop_item, player.default_inventory, ref will_destroy) {
+                Items.move_item_to_inventory(crop_item, player.default_inventory);
+            } else {
+                Items.destroy_item_instance(crop_item);
+            }
+
+            slot_stage[i]   = 0;
+            slot_seed_id[i] = "";
+            slot_elapsed[i] = 0.0;
+            count += 1;
+        }
+
+        if count == 0 return;
+
+        desc := SFX.default_sfx_desc();
+        desc.entity_to_follow = entity.id;
+        desc.volume = 0.7;
+        SFX.play(get_asset(SFX_Asset, "$AO/sfx/harvest/harvest_01.wav"), desc);
+    }
+}
