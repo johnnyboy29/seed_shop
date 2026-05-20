@@ -1,0 +1,41 @@
+test_gate_farming_loop :: proc() {
+    Test.wait_seconds(1.0);
+    Test.assert_balance("starts with 10 schleemlings", "Schleemlings", 10);
+
+    Test.click_button("open_seed_shop");
+    Test.wait_seconds(0.5);
+    Test.screenshot("seed_shop_open");
+    Test.teleport({9, 8.2});
+    Test.wait_seconds(0.5);
+    Test.assert_can_interact("seed stand can sell", "Seed_Shop_Icon");
+    Test.interact_with("Seed_Shop_Icon");
+    Test.wait_seconds(1.0);
+    Test.assert_balance("carrot purchase spends starting cash", "Schleemlings", 0);
+    Test.assert_player_item_count("owns one carrot seed", "seed_0", 1);
+
+    Test.teleport({-9, 4.8});
+    Test.wait_seconds(0.5);
+    Test.assert_can_interact("plot can be claimed", "Garden_Plot_1");
+    Test.interact_with("Garden_Plot_1");
+    Test.wait_seconds(0.8);
+    Test.interact_with("Garden_Plot_1");
+    Test.wait_seconds(2.0);
+    Test.assert_player_item_count("seed consumed by planting", "seed_0", 0);
+
+    Test.teleport({-11.45, 3.05});
+    Test.wait_seconds(10.0);
+    Test.interact();
+    Test.wait_seconds(1.0);
+    Test.assert_player_item_count("harvest created crop item", "crop_0", 1);
+
+    Test.click_button("open_sell_shop");
+    Test.wait_seconds(0.5);
+    Test.screenshot("sell_shop_open");
+    Test.teleport({17, -4.2});
+    Test.wait_seconds(0.5);
+    Test.assert_can_interact("sell stand can sell", "Sell_Shop_Coins");
+    Test.interact_with("Sell_Shop_Coins");
+    Test.wait_seconds(1.0);
+    Test.assert_player_item_count("crop sold", "crop_0", 0);
+    Test.assert_balance("sold carrot by weight", "Schleemlings", 20);
+}

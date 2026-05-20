@@ -1,0 +1,524 @@
+import "core:ao"
+
+CURRENCY :: "Schleemlings";
+MAX_SEEDS_PER_PLOT :: 40;
+SEED_COUNT :: 20;
+GROW_TIME_BASE :: 8.0;
+
+Seed_Definition :: class : Item_Definition {
+    seed_index: s64;
+    cost: s64;
+    spawn_chance: s64;
+    crop_value: s64;
+}
+
+Crop_Definition :: class : Item_Definition {
+    seed_index: s64;
+    base_value: s64;
+}
+
+Crop_Item :: class : Item_Instance {
+    weight_grams: s64 @ao_serialize;
+}
+
+seed_defs: [20]Seed_Definition;
+crop_defs: [20]Crop_Definition;
+
+seed_name :: proc(i: s64) -> string {
+    switch i {
+        case 0: return "Carrot"; case 1: return "Potato"; case 2: return "Corn"; case 3: return "Tomato"; case 4: return "Onion";
+        case 5: return "Pumpkin"; case 6: return "Cabbage"; case 7: return "Pepper"; case 8: return "Bean"; case 9: return "Berry";
+        case 10: return "Melon"; case 11: return "Apple"; case 12: return "Grape"; case 13: return "Cocoa"; case 14: return "Pineapple";
+        case 15: return "Dragonfruit"; case 16: return "Starfruit"; case 17: return "Mooncap"; case 18: return "Crystal Yam"; case 19: return "Exotic Schleem";
+    }
+    return "Seed";
+}
+
+seed_cost :: proc(i: s64) -> s64 {
+    costs: [20]s64 = {10, 18, 25, 35, 45, 60, 75, 95, 120, 150, 190, 240, 300, 380, 480, 620, 800, 1050, 1400, 2000};
+    return costs[i];
+}
+
+seed_chance :: proc(i: s64) -> s64 {
+    chances: [20]s64 = {260, 180, 140, 105, 85, 65, 48, 36, 28, 21, 15, 11, 8, 6, 4, 3, 2, 1, 1, 1};
+    return chances[i];
+}
+
+seed_tier :: proc(i: s64) -> Item_Tier {
+    if i < 5 return .UNCOMMON;
+    if i < 10 return .RARE;
+    if i < 14 return .EPIC;
+    if i < 18 return .LEGENDARY;
+    return .MYTHIC;
+}
+
+seed_icon :: proc(i: s64) -> Texture_Asset {
+    if i == 1 return get_asset(Texture_Asset, "sign_potato_9fcfe9.png");
+    if i == 2 return get_asset(Texture_Asset, "sign_corn_0587c3.png");
+    if i == 3 return get_asset(Texture_Asset, "sign_tomato_f80c87.png");
+    if i == 15 return get_asset(Texture_Asset, "sign_sunflower_0d2123.png");
+    return get_asset(Texture_Asset, "seed_bag_carrot_dbd47f.png");
+}
+
+crop_icon :: proc(i: s64) -> Texture_Asset {
+    if i == 1 return get_asset(Texture_Asset, "sign_potato_9fcfe9.png");
+    if i == 2 return get_asset(Texture_Asset, "sign_corn_0587c3.png");
+    if i == 3 return get_asset(Texture_Asset, "sign_tomato_f80c87.png");
+    if i == 15 return get_asset(Texture_Asset, "sign_sunflower_0d2123.png");
+    return get_asset(Texture_Asset, "Carrot_1bd826.png");
+}
+
+play_local_sfx :: proc(player: Player, asset_path: string, follow: Entity, volume: float) {
+    if !player.is_local() return;
+    s := get_asset(SFX_Asset, asset_path);
+    desc := SFX.default_sfx_desc();
+    desc.volume = volume;
+    desc.speed_perturb = 0.08;
+    if #alive(follow) desc.entity_to_follow = follow.id;
+    SFX.play(s, desc);
+}
+
+refresh_seed_stock :: proc(player: Player) {
+    uid_len := player.get_user_id().count;
+    for i: 0..SEED_COUNT - 1 {
+        roll := (i * 73 + uid_len * 31 + 117) % 1000;
+        player.seed_stock[i] = roll < seed_chance(i);
+    }
+    player.seed_stock[0] = true; // Carrot is always available so a new farmer can start.
+}
+
+make_item_id :: proc(prefix: string, i: s64) -> string { return format_string("%_%", {prefix, i}); }
+
+// Game wide systems
+ao_before_scene_load :: proc() {
+    Scene.set_auto_save_player_inventory(true);
+    Economy.register_currency(CURRENCY, get_asset(Texture_Asset, "coin-2_d358c8.png"));
+
+    for i: 0..SEED_COUNT - 1 {
+        sdesc := Item_Definition_Desc{id=make_item_id("seed", i), name=format_string("% Seed", {seed_name(i)}), icon=seed_icon(i), stack_size=99, tier=seed_tier(i)};
+        sdef := Items.register_item_definition(sdesc, Seed_Definition);
+        sdef.seed_index = i;
+        sdef.cost = seed_cost(i);
+        sdef.spawn_chance = seed_chance(i);
+        sdef.crop_value = seed_cost(i) * 2;
+        seed_defs[i] = sdef;
+
+        cdesc := Item_Definition_Desc{id=make_item_id("crop", i), name=seed_name(i), icon=crop_icon(i), stack_size=1, tier=seed_tier(i)};
+        cdef := Items.register_item_definition(cdesc, Crop_Definition, instance_type=Crop_Item);
+        cdef.seed_index = i;
+        cdef.base_value = seed_cost(i) * 2;
+        crop_defs[i] = cdef;
+    }
+}
+
+ao_start :: proc() {}
+ao_update :: proc(dt: float) {}
+ao_late_update :: proc(dt: float) {}
+
+Farm_Plot :: class : Interactable {
+    plot_index: s64 @ao_serialize;
+    owner_id: string @ao_serialize;
+    planted_count: s64 @ao_serialize;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.required_hold_time = 0.25;
+        this.set_text("Claim / Plant");
+        planted_count = count_plants_for_plot(plot_index);
+    }
+
+    can_use :: method(player: Player) -> bool { return true; }
+
+    on_interact :: method(player: Player) {
+        if owner_id.count == 0 {
+            owner_id = player.get_user_id();
+            this.set_text("Plant");
+            player.owned_plot_index = plot_index;
+            Notifier.notify(player, "Plot claimed");
+            play_local_sfx(player, "upgrade_6ef250.wav", entity, 0.45);
+            return;
+        }
+        if owner_id != player.get_user_id() {
+            Notifier.notify(player, "Another farmer owns this plot");
+            return;
+        }
+        if planted_count >= MAX_SEEDS_PER_PLOT {
+            Notifier.notify(player, "Plot full");
+            return;
+        }
+        if player.selected_seed_index < 0 || player.selected_seed_index >= SEED_COUNT {
+            Notifier.notify(player, "Pick a seed in the shop");
+            return;
+        }
+        if consume_seed(player, player.selected_seed_index) {
+            spawn_plant(this, player, player.selected_seed_index, planted_count);
+            planted_count += 1;
+            play_local_sfx(player, "click_6d65ee.wav", entity, 0.45);
+        } else {
+            Notifier.notify(player, "Buy that seed first");
+        }
+    }
+}
+
+Farm_Plant :: class : Interactable {
+    owner_id: string @ao_serialize;
+    seed_index: s64 @ao_serialize;
+    plot_index: s64 @ao_serialize;
+    planted_time: float @ao_serialize;
+    weight_grams: s64 @ao_serialize;
+    mature: bool @ao_serialize;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.required_hold_time = 0.2;
+        this.set_text("Growing");
+    }
+
+    ao_update :: method(dt: float) {
+        if !mature && get_time() - planted_time >= GROW_TIME_BASE + seed_index.(float) * 1.5 {
+            mature = true;
+            this.set_text("Harvest");
+            entity.set_local_scale({1.0 + seed_index.(float) * 0.03, 1.0 + seed_index.(float) * 0.03});
+        }
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if owner_id != player.get_user_id() return false;
+        return mature;
+    }
+
+    on_interact :: method(player: Player) {
+        if owner_id != player.get_user_id() return;
+        if !mature return;
+        crop := Items.create_item_instance(crop_defs[seed_index], Crop_Item, 1);
+        crop.weight_grams = weight_grams;
+        will_destroy: bool;
+        if Items.can_move_item_to_inventory(crop, player.default_inventory, ref will_destroy) {
+            Items.move_item_to_inventory(crop, player.default_inventory);
+            plot := get_plot(plot_index);
+            if #alive(plot) && plot.planted_count > 0 plot.planted_count -= 1;
+            player.harvest_fx_t = 1.0;
+            play_local_sfx(player, "upgrade_6ef250.wav", entity, 0.6);
+            entity.destroy();
+        } else {
+            Items.destroy_item_instance(crop);
+            Notifier.notify(player, "Inventory full");
+        }
+    }
+}
+
+Shop_Teleport :: class : Interactable {
+    shop_kind: s64 @ao_serialize; // 0 gear, 1 seed, 2 sell
+    target: v2 @ao_serialize;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.required_hold_time = 0;
+        if shop_kind == 0 this.set_text("Gear");
+        if shop_kind == 1 this.set_text("Seeds");
+        if shop_kind == 2 this.set_text("Sell");
+    }
+
+    can_use :: method(player: Player) -> bool { return true; }
+
+    on_interact :: method(player: Player) {
+        player.entity.set_local_position(target);
+        if shop_kind == 0 player.show_gear_shop = true;
+        if shop_kind == 1 player.show_seed_shop = true;
+        if shop_kind == 2 player.show_sell_shop = true;
+        play_local_sfx(player, "click_6d65ee.wav", entity, 0.45);
+    }
+}
+
+Seed_Stand :: class : Interactable {
+    seed_index: s64 @ao_serialize;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.required_hold_time = 0.15;
+        this.set_text("Buy Seed");
+    }
+
+    can_use :: method(player: Player) -> bool { return true; }
+    on_interact :: method(player: Player) { buy_seed(player, seed_index); }
+}
+
+Sell_Stand :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.required_hold_time = 0.15;
+        this.set_text("Sell Crops");
+    }
+
+    can_use :: method(player: Player) -> bool { return true; }
+    on_interact :: method(player: Player) { sell_all_crops(player); }
+}
+
+get_plot :: proc(index: s64) -> Farm_Plot {
+    for p: component_iterator(Farm_Plot) {
+        if p.plot_index == index return p;
+    }
+    return null;
+}
+
+count_plants_for_plot :: proc(index: s64) -> s64 {
+    count: s64 = 0;
+    for plant: component_iterator(Farm_Plant) {
+        if plant.plot_index == index count += 1;
+    }
+    return count;
+}
+
+consume_seed :: proc(player: Player, seed_index: s64) -> bool {
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type == Seed_Definition {
+            seed := defn.(Seed_Definition);
+            if seed.seed_index == seed_index {
+                Items.destroy_item_instance(item, 1);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+spawn_plant :: proc(plot: Farm_Plot, player: Player, seed_index: s64, slot: s64) {
+    e := Scene.create_entity();
+    col := slot % 8;
+    row := slot / 8;
+    pos := plot.entity.local_position + v2{-2.45 + col.(float) * 0.7, -1.75 + row.(float) * 0.7};
+    e.set_local_position(pos);
+    e.set_local_scale({0.35, 0.35});
+    sprite := e.add_component(Sprite_Renderer);
+    sprite.set_texture(get_asset(Texture_Asset, "Carrot Plant (Growing)_d83107.png"));
+    sprite.layer = 0;
+    plant := e.add_component(Farm_Plant);
+    plant.owner_id = player.get_user_id();
+    plant.seed_index = seed_index;
+    plant.plot_index = plot.plot_index;
+    plant.planted_time = get_time();
+    // Heavier exotic crops are rarer and more valuable; deterministic enough for predicted gameplay.
+    plant.weight_grams = 100 + seed_index * 35;
+}
+
+buy_seed :: proc(player: Player, seed_index: s64) {
+    cost := seed_defs[seed_index].cost;
+    if !player.seed_stock[seed_index] {
+        Notifier.notify(player, "Out of stock");
+        return;
+    }
+    if !Economy.can_withdraw_currency(player, CURRENCY, cost) {
+        Notifier.notify(player, "Need more schleemlings");
+        return;
+    }
+    Economy.withdraw_currency(player, CURRENCY, cost);
+    item := Items.create_item_instance(seed_defs[seed_index], 1);
+    destroyed: bool;
+    moved := Items.move_as_many_items_as_possible_to_inventory(item, player.default_inventory, ref destroyed);
+    if moved > 0 {
+        player.selected_seed_index = seed_index;
+        player.seed_stock[seed_index] = false;
+        player.show_seed_shop = false;
+        player.harvest_fx_t = 1.0;
+        play_local_sfx(player, "upgrade_6ef250.wav", player.entity, 0.45);
+    } else {
+        Economy.deposit_currency(player, CURRENCY, cost);
+        Items.destroy_item_instance(item);
+        Notifier.notify(player, "Inventory full");
+    }
+}
+
+sell_all_crops :: proc(player: Player) {
+    total: s64 = 0;
+    sold: s64 = 0;
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        if item.#type == Crop_Item {
+            crop_item := item.(Crop_Item);
+            defn := item.get_definition().(Crop_Definition);
+            total += max(1, (defn.base_value * crop_item.weight_grams) / 100);
+            sold += 1;
+            Items.destroy_item_instance(item);
+        }
+    }
+    if total > 0 {
+        Economy.deposit_currency(player, CURRENCY, total);
+        player.harvest_fx_t = 1.0;
+        Notifier.notify(player, "Sold % crops", {sold});
+        play_local_sfx(player, "upgrade_6ef250.wav", player.entity, 0.65);
+    } else {
+        Notifier.notify(player, "No crops to sell");
+    }
+}
+
+count_crop_items :: proc(player: Player) -> s64 {
+    count: s64 = 0;
+    for i: 0..player.default_inventory.capacity - 1 {
+        item := player.default_inventory.get_item(i);
+        if item == null continue;
+        if item.#type == Crop_Item count += 1;
+    }
+    return count;
+}
+
+find_near_shop :: proc(player: Player, kind: s64) -> bool {
+    nearby: [..]Shop_Teleport;
+    Scene.get_all_components_in_range(player.entity.local_position, 4.0, ref nearby);
+    for s: nearby {
+        if s.shop_kind == kind return true;
+    }
+    return false;
+}
+
+draw_hud :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+    bar := UIK.layout_row();
+    bar.width = UIK.flex(1); bar.height = UIK.flex(1); bar.padding = v4{8, 16, 8, 16}; bar.gap = 16; bar.cross_align = .CENTER;
+    UIK.panel_begin(bar);
+    UIK.currency(get_asset(Texture_Asset, "coin-2_d358c8.png"), Economy.get_balance(player, CURRENCY), UIK.text_title());
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+    label := "No Seed";
+    if player.selected_seed_index >= 0 label = format_string("Seed: %", {seed_name(player.selected_seed_index)});
+    UIK.text(label, UIK.text_body());
+    UIK.panel_end();
+    UIK.end();
+
+    UIK.begin(UIK.window(UIK.rect_sidebar_right()));
+    side := UIK.layout_column(); side.width = UIK.flex(1); side.height = UIK.fit(); side.gap = 8; side.padding = v4{8,8,8,8};
+    UIK.panel_begin(side);
+    seed_btn := UIK.button("open_seed_shop", "Seeds", UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN));
+    sell_btn := UIK.button("open_sell_shop", "Sell", UIK.widget_desc_button_auto_default(.BUTTON_BASIC_YELLOW1));
+    gear_btn := UIK.button("open_gear_shop", "Gear", UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREY));
+    UIK.panel_end();
+    UIK.end();
+    if UIK.clicked(seed_btn) { player.entity.set_local_position({9, 7}); player.show_seed_shop = true; }
+    if UIK.clicked(sell_btn) { player.entity.set_local_position({17, -5.5}); player.show_sell_shop = true; }
+    if UIK.clicked(gear_btn) { player.entity.set_local_position({-17, -5.5}); player.show_gear_shop = true; }
+}
+
+draw_seed_shop :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 15));
+    shell := UIK.panel_modal(.BROWN); shell.padding = v4{14,14,14,14}; shell.gap = 8; UIK.panel_begin(shell);
+    exit := UIK.title_area(UIK.title_area_desc("Seed Shop"));
+    content := UIK.layout_column(); content.width = UIK.flex(1); content.height = UIK.flex(1); content.gap = 6;
+    UIK.list_begin("seed_shop_scroll", content);
+    handles: [20]UIK.Interact_Handle;
+    for i: 0..SEED_COUNT - 1 {
+        stock := "Out";
+        if player.seed_stock[i] stock = "In";
+        text := format_string("%  $%  %/1000  %", {seed_name(i), seed_defs[i].cost, seed_defs[i].spawn_chance, stock});
+        desc := UIK.widget_desc_button_auto_default(.BUTTON_BASIC_GREEN);
+        desc.panel.width = UIK.flex(1); desc.panel.height = UIK.pixels(62);
+        handles[i] = UIK.button(format_string("buy_seed_%", {i}), text, desc);
+    }
+    UIK.list_end();
+    UIK.panel_end(); UIK.end();
+    if UIK.clicked(exit) player.show_seed_shop = false;
+    for i: 0..SEED_COUNT - 1 {
+        if UIK.clicked(handles[i]) {
+            buy_seed(player, i);
+        }
+    }
+}
+
+draw_sell_shop :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_small(), 15));
+    shell := UIK.panel_modal(.BLUE_WITH_FOOTER); shell.padding = v4{16,16,16,16}; shell.gap = 14; UIK.panel_begin(shell);
+    exit := UIK.title_area(UIK.title_area_desc("Sell Crops"));
+    UIK.text(format_string("Crops ready: %", {count_crop_items(player)}), UIK.text_title());
+    desc := UIK.widget_desc_button_default(.BUTTON_BASIC_YELLOW1); desc.panel.height = UIK.pixels(90); desc.panel.width = UIK.flex(1);
+    sell := UIK.button("sell_all", "Sell All", desc);
+    UIK.panel_end(); UIK.end();
+    if UIK.clicked(exit) player.show_sell_shop = false;
+    if UIK.clicked(sell) sell_all_crops(player);
+}
+
+draw_gear_shop :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_small(), 15));
+    shell := UIK.panel_modal(.BLACK); shell.padding = v4{16,16,16,16}; shell.gap = 12; UIK.panel_begin(shell);
+    exit := UIK.title_area(UIK.title_area_desc("Gear Shop"));
+    UIK.text("Basic tools included. Better gear coming soon.", UIK.text_body());
+    UIK.panel_end(); UIK.end();
+    if UIK.clicked(exit) player.show_gear_shop = false;
+}
+
+draw_reward_fx :: proc(player: Player, dt: float) {
+    if player.harvest_fx_t <= 0 return;
+    player.harvest_fx_t -= dt;
+    // Small non-blocking stats panel sparkle substitute using coin icon and short text.
+    UIK.begin(UIK.window(UIK.rect_stats()));
+    p := UIK.panel_styled(.MODAL_TRANSP_BLACK); p.width = UIK.fit(); p.height = UIK.fit(); p.padding = v4{10,10,10,10};
+    UIK.panel_begin(p); UIK.text("+", UIK.text_title()); UIK.image_fitted(get_asset(Texture_Asset, "coin-2_d358c8.png"), UIK.image_desc(.CONTAIN)); UIK.panel_end();
+    UIK.end();
+}
+
+// Per player state
+Player :: class : Player_Base {
+    initialized: bool @ao_serialize;
+    selected_seed_index: s64 @ao_serialize;
+    owned_plot_index: s64 @ao_serialize;
+    show_seed_shop: bool;
+    show_sell_shop: bool;
+    show_gear_shop: bool;
+    harvest_fx_t: float;
+    seed_stock: [20]bool @ao_serialize;
+
+    ao_start :: method() {
+        Items.set_capacity(default_inventory, 80);
+        if !initialized {
+            initialized = true;
+            selected_seed_index = 0;
+            owned_plot_index = -1;
+            Economy.delete_save_data(this);
+            Items.destroy_all_items(default_inventory);
+            Economy.deposit_currency(this, CURRENCY, 10);
+            refresh_seed_stock(this);
+        }
+        if !seed_stock[0] refresh_seed_stock(this);
+    }
+
+    ao_update :: method(dt: float) {}
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_hud(this);
+            options := Inventory_Draw_Options.default();
+            options.hotbar_item_count = 6;
+            options.enable_use_from_hotbar = true;
+            options.scroll_item_selection = true;
+            options.keyboard_item_selection = true;
+            result := Items.draw_hotbar(this, default_inventory, options);
+            if #alive(result.selected_item) {
+                defn := result.selected_item.get_definition();
+                if defn.#type == Seed_Definition selected_seed_index = defn.(Seed_Definition).seed_index;
+            }
+            if show_seed_shop draw_seed_shop(this);
+            if show_sell_shop draw_sell_shop(this);
+            if show_gear_shop draw_gear_shop(this);
+            draw_reward_fx(this, dt);
+        }
+    }
+
+    ao_end :: method() {
+        uid := get_user_id();
+        for p: component_iterator(Farm_Plot) {
+            if p.owner_id == uid {
+                p.owner_id = "";
+                p.planted_count = 0;
+            }
+        }
+        for plant: component_iterator(Farm_Plant) {
+            if plant.owner_id == uid {
+                plant.entity.destroy();
+            }
+        }
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool { return true; }
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool { return true; }
+    ao_on_state_sync :: method() {}
+}

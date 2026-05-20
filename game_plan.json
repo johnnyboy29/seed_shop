@@ -1,0 +1,10 @@
+{
+  "game": "Schleemling Farms",
+  "description": "A multiplayer farming simulator where players claim plots, buy seeds, grow crops, harvest plants, and sell by weight for schleemlings.",
+  "scene_epics": [
+    {"name":"Farm World Layout","status":"done","tasks":[{"name":"Create green baseplate and farm paths","done":true},{"name":"Place four farm plots","done":true},{"name":"Place gear, seed, and sell shop landmarks","done":true}],"verified":true}
+  ],
+  "script_epics": [
+    {"name":"Farming Loop","status":"done","tasks":[{"name":"Register currency, seed/crop items, and player state","done":true},{"name":"Implement plot claiming, planting up to 40 seeds, crop growth, and harvesting","done":true},{"name":"Implement seed shop, sell shop, gear shop teleports/UI, and economy rewards","done":true}],"gate_test":"test_gate_farming_loop","gate_passed":true}
+  ]
+}
