@@ -1,0 +1,99 @@
+SEED_SHOP_TELEPORT :: v2{-31, 0};
+SELL_SHOP_TELEPORT :: v2{31, 0};
+
+draw_topbar :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+
+    bar := UIK.layout_row();
+    bar.width = UIK.flex(1);
+    bar.height = UIK.flex(1);
+    bar.padding = v4{12, 8, 12, 8};
+    bar.gap = 12;
+    bar.cross_align = .CENTER;
+    bar.show_background = false;
+    UIK.panel_begin(bar);
+
+    coin := get_asset(Texture_Asset, "coin_3e1a18.png");
+    UIK.currency(coin, Economy.get_balance(player, CURRENCY_ID), UIK.text_title());
+
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+
+    selected_label: string;
+    if player.selected_seed_id == "" {
+        selected_label = "No seed selected";
+    } else {
+        defn := get_seed_definition(player.selected_seed_id);
+        if defn != null {
+            selected_label = format_string("Selected: %", {defn.get_name()});
+        } else {
+            selected_label = "No seed selected";
+        }
+    }
+
+    sel_ts := UIK.text_body();
+    sel_ts.color = {1, 1, 0.6, 1};
+    UIK.text(selected_label, sel_ts);
+
+    UIK.panel_end();
+    UIK.end();
+}
+
+Sidebar_Handles :: struct {
+    seed_shop: UIK.Interact_Handle;
+    sell_shop: UIK.Interact_Handle;
+    my_plot: UIK.Interact_Handle;
+}
+
+draw_teleport_sidebar :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_sidebar_right()));
+
+    handles: Sidebar_Handles;
+
+    side := UIK.layout_column();
+    side.width = UIK.flex(1);
+    side.height = UIK.flex(1);
+    side.padding = v4{6, 60, 6, 12};
+    side.gap = 10;
+    side.main_align = .START;
+    side.show_background = false;
+    UIK.panel_begin(side);
+
+    UIK.text("Teleport", UIK.text_title());
+    UIK.spacer(UIK.pixels(1), UIK.pixels(4));
+
+    seed_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_YELLOW1);
+    seed_desc.panel.width = UIK.flex(1);
+    seed_desc.panel.height = UIK.pixels(60);
+    handles.seed_shop = UIK.button("tp_seed_shop", "Seed Shop", seed_desc);
+
+    sell_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+    sell_desc.panel.width = UIK.flex(1);
+    sell_desc.panel.height = UIK.pixels(60);
+    handles.sell_shop = UIK.button("tp_sell_shop", "Sell Shop", sell_desc);
+
+    plot_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_BLUE);
+    plot_desc.panel.width = UIK.flex(1);
+    plot_desc.panel.height = UIK.pixels(60);
+    handles.my_plot = UIK.button("tp_my_plot", "My Plot", plot_desc);
+
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(handles.seed_shop) {
+        teleport_player_to(player, SEED_SHOP_TELEPORT);
+    }
+    if UIK.clicked(handles.sell_shop) {
+        teleport_player_to(player, SELL_SHOP_TELEPORT);
+    }
+    if UIK.clicked(handles.my_plot) {
+        if player.assigned_plot != null && #alive(player.assigned_plot) {
+            teleport_player_to(player, player.assigned_plot.entity.world_position);
+        }
+    }
+}
+
+teleport_player_to :: proc(player: Player, pos: v2) {
+    if player.entity == null return;
+    if !#alive(player.entity) return;
+    player.entity.set_local_position(pos);
+}

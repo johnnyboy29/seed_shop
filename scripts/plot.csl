@@ -1,0 +1,267 @@
+Plot :: class : Component {
+    plot_index: s32 @ao_serialize;
+    owner_user_id: string @ao_serialize;
+    slots_spawned: bool;
+
+    ao_start :: method() {
+        if !slots_spawned {
+            spawn_slots();
+            slots_spawned = true;
+        }
+    }
+
+    spawn_slots :: method() {
+        plot_pos := entity.world_position;
+
+        x_origin := plot_pos.x - (SLOT_COLS - 1).(float) * SLOT_SPACING * 0.5;
+        y_origin := plot_pos.y - (SLOT_ROWS - 1).(float) * SLOT_SPACING * 0.5;
+
+        for row: 0..SLOT_ROWS-1 {
+            for col: 0..SLOT_COLS-1 {
+                slot_entity := Scene.create_entity();
+                slot_entity.set_name(format_string("Plot_%_Slot_%_%", {plot_index, row, col}));
+                slot_entity.set_local_position(v2{x_origin + col.(float) * SLOT_SPACING, y_origin + row.(float) * SLOT_SPACING});
+
+                slot := slot_entity.add_component(Plant_Slot);
+                slot.plot_index = plot_index;
+                slot.slot_index = (row * SLOT_COLS + col).(s32);
+            }
+        }
+    }
+}
+
+Plant_Slot :: class : Interactable {
+    plot_index: s32 @ao_serialize;
+    slot_index: s32 @ao_serialize;
+
+    planted_seed_id: string @ao_serialize;
+    plant_time: float @ao_serialize;
+
+    plant_sprite_entity: Entity;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Plant");
+        this.required_hold_time = 0;
+        this.radius = 1.5;
+
+        ensure_plant_sprite();
+    }
+
+    ao_update :: method(dt: float) {
+        ensure_plant_sprite();
+        update_plant_sprite_visual();
+    }
+
+    ensure_plant_sprite :: method() {
+        if plant_sprite_entity == null || !#alive(plant_sprite_entity) {
+            plant_sprite_entity = Scene.create_entity();
+            plant_sprite_entity.set_parent(entity, false);
+            plant_sprite_entity.set_local_position(v2{0, 0.2});
+            sprite := plant_sprite_entity.add_component(Sprite_Renderer);
+            sprite.layer = 1;
+            sprite.color = {1, 1, 1, 0};
+        }
+    }
+
+    update_plant_sprite_visual :: method() {
+        if plant_sprite_entity == null || !#alive(plant_sprite_entity) return;
+        sprite := plant_sprite_entity.get_component(Sprite_Renderer);
+        if sprite == null return;
+
+        if planted_seed_id == "" {
+            sprite.color = {1, 1, 1, 0};
+            return;
+        }
+
+        defn := get_seed_definition(planted_seed_id);
+        if defn == null {
+            sprite.color = {1, 1, 1, 0};
+            return;
+        }
+        sprite.set_texture(defn.plant_texture);
+
+        elapsed := get_time() - plant_time;
+        ratio := clamp(elapsed / defn.grow_seconds, 0.0, 1.0);
+
+        scale := lerp(0.35, 1.0, ratio);
+        plant_sprite_entity.set_local_scale(v2{scale, scale});
+        sprite.color = {1, 1, 1, 1};
+    }
+
+    is_grown :: method() -> bool {
+        if planted_seed_id == "" return false;
+        defn := get_seed_definition(planted_seed_id);
+        if defn == null return false;
+        elapsed := get_time() - plant_time;
+        return elapsed >= defn.grow_seconds;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        if player == null return false;
+        plot := find_plot_by_index(plot_index);
+        if plot == null return false;
+        if plot.owner_user_id != player.get_user_id() return false;
+        if planted_seed_id == "" {
+            if player.selected_seed_id == "" return false;
+            return has_selected_seed_in_inventory(player);
+        }
+        return is_grown();
+    }
+
+    on_interact :: method(player: Player) {
+        if planted_seed_id == "" {
+            seed_id := player.selected_seed_id;
+            if seed_id == "" return;
+            if !consume_one_seed_from_inventory(player, seed_id) return;
+            planted_seed_id = seed_id;
+            plant_time = get_time();
+        } else {
+            if !is_grown() return;
+            harvested := planted_seed_id;
+            planted_seed_id = "";
+            plant_time = 0;
+            give_plant_to_player(player, harvested);
+        }
+    }
+}
+
+find_plot_by_index :: proc(idx: s32) -> Plot {
+    for p: component_iterator(Plot) {
+        if p.plot_index == idx return p;
+    }
+    return null;
+}
+
+assign_plot_for_player :: proc(player: Player) {
+    user_id := player.get_user_id();
+
+    for p: component_iterator(Plot) {
+        if p.owner_user_id == user_id {
+            player.assigned_plot = p;
+            return;
+        }
+    }
+
+    for p: component_iterator(Plot) {
+        if p.owner_user_id == "" {
+            p.owner_user_id = user_id;
+            player.assigned_plot = p;
+            return;
+        }
+    }
+}
+
+release_plot_for_player :: proc(player: Player) {
+    user_id := player.get_user_id();
+    for p: component_iterator(Plot) {
+        if p.owner_user_id == user_id {
+            p.owner_user_id = "";
+            for slot: component_iterator(Plant_Slot) {
+                if slot.plot_index == p.plot_index {
+                    slot.planted_seed_id = "";
+                    slot.plant_time = 0;
+                }
+            }
+        }
+    }
+}
+
+has_selected_seed_in_inventory :: proc(player: Player) -> bool {
+    if player.selected_seed_id == "" return false;
+    inv := player.default_inventory;
+    if inv == null return false;
+    for i: 0..inv.capacity-1 {
+        item := inv.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type != Seed_Definition continue;
+        seed_defn := defn.(Seed_Definition);
+        if seed_defn.seed_id == player.selected_seed_id return true;
+    }
+    return false;
+}
+
+consume_one_seed_from_inventory :: proc(player: Player, seed_id: string) -> bool {
+    inv := player.default_inventory;
+    if inv == null return false;
+    for i: 0..inv.capacity-1 {
+        item := inv.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type != Seed_Definition continue;
+        seed_defn := defn.(Seed_Definition);
+        if seed_defn.seed_id == seed_id {
+            Items.destroy_item_instance(item, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+give_plant_to_player :: proc(player: Player, seed_id: string) {
+    plant_defn := get_plant_definition(seed_id);
+    if plant_defn == null return;
+    item := Items.create_item_instance(plant_defn, 1);
+    will_destroy: bool;
+    if Items.can_move_item_to_inventory(item, player.default_inventory, ref will_destroy) {
+        Items.move_item_to_inventory(item, player.default_inventory);
+    } else {
+        Items.destroy_item_instance(item);
+    }
+}
+
+draw_world_space_timers :: proc() {
+    for slot: component_iterator(Plant_Slot) {
+        if slot.planted_seed_id == "" continue;
+        defn := get_seed_definition(slot.planted_seed_id);
+        if defn == null continue;
+
+        elapsed := get_time() - slot.plant_time;
+        ratio := clamp(elapsed / defn.grow_seconds, 0.0, 1.0);
+
+        pos := slot.entity.world_position + v2{0, 0.7};
+
+        options := World_Progress_Bar.default_options();
+        options.y_bias = 1;
+        options.width = 0.85;
+        options.height = 0.12;
+        options.scale = 1;
+        World_Progress_Bar.draw(pos, ratio, options);
+
+        remaining := defn.grow_seconds - elapsed;
+        if remaining < 0 remaining = 0;
+
+        label_text: string;
+        if remaining <= 0 {
+            label_text = "Ready!";
+        } else {
+            minutes := (remaining / 60.0).(s64);
+            seconds := (remaining - minutes.(float) * 60.0).(s64);
+            if minutes > 0 {
+                label_text = format_string("%m %0ss", {minutes, seconds});
+            } else {
+                label_text = format_string("%s", {seconds});
+            }
+        }
+
+        text_pos := pos + v2{0, 0.25};
+        screen_pos := world_to_screen(text_pos);
+        text_size := v2{120, 30};
+        rect := Rect{
+            min = screen_pos - text_size * 0.5,
+            max = screen_pos + text_size * 0.5,
+        };
+        ts := UI.default_text_settings();
+        ts.size = 22;
+        if remaining <= 0 {
+            ts.color = {0.4, 1.0, 0.4, 1.0};
+        } else {
+            ts.color = {1, 1, 1, 1};
+        }
+        ts.outline_thickness = 2.0;
+        ts.outline_color = {0, 0, 0, 1};
+        ts.do_outline = true;
+        UI.text(rect, ts, label_text);
+    }
+}

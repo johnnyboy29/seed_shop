@@ -1,0 +1,37 @@
+test_gate_world_built :: proc() {
+    Test.wait_seconds(1.5);
+    Test.assert_entity_count("plots in scene", "Plot", 4);
+    Test.assert_entity_count("plant slots spawned", "Plant_Slot", 160);
+    Test.assert_entity_exists("seed shop", "Seed_Shop_Building");
+    Test.assert_entity_exists("sell shop", "Sell_Shop_Building");
+}
+
+test_gate_seed_shop_opens :: proc() {
+    Test.wait_seconds(1.0);
+
+    Test.teleport({-31, 0});
+    Test.wait_seconds(0.6);
+    Test.assert_can_interact("can open seed shop", "Seed_Shop_Building");
+    Test.interact_with("Seed_Shop_Building");
+    Test.wait_seconds(1.5);
+    Test.screenshot("seed_shop_open");
+}
+
+test_gate_sell_shop_opens :: proc() {
+    Test.wait_seconds(1.0);
+
+    Test.teleport({31, 0});
+    Test.wait_seconds(0.6);
+    Test.assert_can_interact("can open sell shop", "Sell_Shop_Building");
+    Test.interact_with("Sell_Shop_Building");
+    Test.wait_seconds(1.5);
+    Test.screenshot("sell_shop_open");
+}
+
+test_gate_world_overview :: proc() {
+    Test.wait_seconds(1.0);
+    Test.teleport({0, 0});
+    Test.wait_seconds(0.8);
+    Test.screenshot("world_overview");
+    Test.assert_player_near("centered", {0, 0}, 2.0);
+}

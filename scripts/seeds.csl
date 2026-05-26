@@ -1,0 +1,131 @@
+Seed_Rarity :: enum {
+    COMMON;
+    UNCOMMON;
+    RARE;
+    LEGENDARY;
+    MYTHIC;
+    DIVINE;
+}
+
+Seed_Definition :: class : Item_Definition {
+    seed_id: string;
+    cost: s64;
+    grow_seconds: float;
+    sell_price: s64;
+    plant_texture: Texture_Asset;
+    custom_rarity: Seed_Rarity;
+}
+
+Plant_Definition :: class : Item_Definition {
+    seed_id: string;
+    sell_price: s64;
+    custom_rarity: Seed_Rarity;
+}
+
+all_seeds: [..]Seed_Definition;
+all_plants: [..]Plant_Definition;
+
+get_seed_definition :: proc(seed_id: string) -> Seed_Definition {
+    for s: all_seeds {
+        if s.seed_id == seed_id return s;
+    }
+    return null;
+}
+
+get_plant_definition :: proc(seed_id: string) -> Plant_Definition {
+    for p: all_plants {
+        if p.seed_id == seed_id return p;
+    }
+    return null;
+}
+
+rarity_color :: proc(r: Seed_Rarity) -> v4 {
+    switch r {
+        case .COMMON:    return {0.78, 0.78, 0.78, 1.0};
+        case .UNCOMMON:  return {0.45, 0.85, 0.45, 1.0};
+        case .RARE:      return {0.36, 0.55, 1.00, 1.0};
+        case .LEGENDARY: return {0.80, 0.55, 0.10, 1.0};
+        case .MYTHIC:    return {0.95, 0.30, 0.85, 1.0};
+        case .DIVINE:    return {1.00, 0.95, 0.30, 1.0};
+        default:         return {1, 1, 1, 1};
+    }
+}
+
+rarity_name :: proc(r: Seed_Rarity) -> string {
+    switch r {
+        case .COMMON:    return "Common";
+        case .UNCOMMON:  return "Uncommon";
+        case .RARE:      return "Rare";
+        case .LEGENDARY: return "Legendary";
+        case .MYTHIC:    return "Mythic";
+        case .DIVINE:    return "Divine";
+        default:         return "Unknown";
+    }
+}
+
+rarity_to_tier :: proc(r: Seed_Rarity) -> Item_Tier {
+    switch r {
+        case .COMMON:    return .COMMON;
+        case .UNCOMMON:  return .UNCOMMON;
+        case .RARE:      return .RARE;
+        case .LEGENDARY: return .EPIC;
+        case .MYTHIC:    return .LEGENDARY;
+        case .DIVINE:    return .MYTHIC;
+        default:         return .COMMON;
+    }
+}
+
+register_seed :: proc(seed_id: string, name: string, rarity: Seed_Rarity, cost: s64, grow_seconds: float, sell_price: s64, plant_tex_path: string) {
+    plant_tex := get_asset(Texture_Asset, plant_tex_path);
+    seed_id_full := format_string("seed_%", {seed_id});
+    plant_id_full := format_string("plant_%", {seed_id});
+
+    seed_defn := Items.register_item_definition(
+        {seed_id_full, format_string("% Seed", {name}), plant_tex, 999, rarity_to_tier(rarity)},
+        Seed_Definition
+    );
+    seed_defn.seed_id = seed_id;
+    seed_defn.cost = cost;
+    seed_defn.grow_seconds = grow_seconds;
+    seed_defn.sell_price = sell_price;
+    seed_defn.plant_texture = plant_tex;
+    seed_defn.custom_rarity = rarity;
+    all_seeds.append(seed_defn);
+
+    plant_defn := Items.register_item_definition(
+        {plant_id_full, name, plant_tex, 999, rarity_to_tier(rarity)},
+        Plant_Definition
+    );
+    plant_defn.seed_id = seed_id;
+    plant_defn.sell_price = sell_price;
+    plant_defn.custom_rarity = rarity;
+    all_plants.append(plant_defn);
+}
+
+register_all_seeds :: proc() {
+    register_seed("carrot",      "Carrot",       .COMMON,     10,      60,   25,      "carrot_f756a3.png");
+    register_seed("lettuce",     "Lettuce",      .COMMON,     30,      90,   75,      "lettuce_c252b7.png");
+    register_seed("potato",      "Potato",       .COMMON,     60,      120,  150,     "Potato_566afc.png");
+    register_seed("onion",       "Onion",        .COMMON,     100,     150,  250,     "onion_ed140e.png");
+
+    register_seed("tomato",      "Tomato",       .UNCOMMON,   200,     180,  500,     "Giant Tomato_a8329f.png");
+    register_seed("cucumber",    "Cucumber",     .UNCOMMON,   350,     240,  900,     "cucumber_a4cce1.png");
+    register_seed("corn",        "Corn",         .UNCOMMON,   600,     300,  1500,    "Corn_1f6789.png");
+    register_seed("pepper",      "Pepper",       .UNCOMMON,   1000,    360,  2500,    "pepper_2_3317ac.png");
+
+    register_seed("pumpkin",     "Pumpkin",      .RARE,       2000,    420,  5000,    "Pumpkin Body_3ddb33.png");
+    register_seed("watermelon",  "Watermelon",   .RARE,       4000,    480,  10000,   "watermelon_0fa099.png");
+    register_seed("strawberry",  "Strawberry",   .RARE,       7000,    540,  17500,   "strawberry_sundae_596a32.png");
+    register_seed("blueberry",   "Blueberry",    .RARE,       12000,   600,  30000,   "blueberry_f5079c.png");
+    register_seed("pineapple",   "Pineapple",    .RARE,       20000,   660,  50000,   "pineapple_2e90dc.png");
+
+    register_seed("apple",       "Golden Apple", .LEGENDARY,  35000,   780,  90000,   "apple_icon_9a0232.png");
+    register_seed("banana",      "Banana",       .LEGENDARY,  60000,   900,  150000,  "banana_96915e.png");
+
+    register_seed("orange",      "Sun Orange",   .MYTHIC,     90000,   1020, 225000,  "orange_fruit_3e2b2c.png");
+    register_seed("dragonfruit", "Dragonfruit",  .MYTHIC,     140000,  1200, 350000,  "star05_aee262.png");
+    register_seed("starfruit",   "Starfruit",    .MYTHIC,     200000,  1320, 500000,  "Star_03_98edec.png");
+
+    register_seed("cosmic",      "Cosmic Pepper", .DIVINE,    300000,  1500, 750000,  "red-chili-pepper_9642f7.png");
+    register_seed("ghost",       "Ghost Pepper",  .DIVINE,    400000,  1800, 1000000, "red_chili_pepper_619c65.png");
+}

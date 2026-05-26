@@ -1,0 +1,383 @@
+Seed_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Open Seed Shop");
+        this.required_hold_time = 0;
+        this.radius = 4.5;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return !player.show_seed_shop && !player.show_sell_shop;
+    }
+
+    on_interact :: method(player: Player) {
+        player.show_seed_shop = true;
+        player.show_sell_shop = false;
+    }
+}
+
+Sell_Shop :: class : Interactable {
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Open Sell Shop");
+        this.required_hold_time = 0;
+        this.radius = 4.5;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        return !player.show_seed_shop && !player.show_sell_shop;
+    }
+
+    on_interact :: method(player: Player) {
+        player.show_sell_shop = true;
+        player.show_seed_shop = false;
+    }
+}
+
+Seed_Shop_Handles :: struct {
+    exit: UIK.Interact_Handle;
+    buys: [20]UIK.Interact_Handle;
+    selects: [20]UIK.Interact_Handle;
+}
+
+draw_seed_shop_ui :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 15));
+
+    shell := UIK.panel_modal(.BROWN);
+    shell.padding = v4{14, 14, 14, 14};
+    shell.gap = 6;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("SEED SHOP");
+    exit_handle := UIK.title_area(title_desc);
+
+    balance := Economy.get_balance(player, CURRENCY_ID);
+    bal_panel := UIK.layout_row();
+    bal_panel.width = UIK.flex(1);
+    bal_panel.height = UIK.fit();
+    bal_panel.cross_align = .CENTER;
+    bal_panel.show_background = false;
+    UIK.panel_begin(bal_panel);
+    UIK.text(format_string("Schleems: %", {balance}), UIK.text_title());
+    UIK.panel_end();
+
+    handles: Seed_Shop_Handles;
+    handles.exit = exit_handle;
+
+    content := UIK.layout_column();
+    content.width = UIK.flex(1);
+    content.height = UIK.flex(1);
+    content.padding = v4{8, 8, 8, 8};
+    content.gap = 10;
+    UIK.list_begin("seed_shop_scroll", content);
+
+    last_rarity: Seed_Rarity = .COMMON;
+    rarity_set: bool = false;
+
+    for i: 0..all_seeds.count - 1 {
+        seed := all_seeds[i];
+
+        if !rarity_set || seed.custom_rarity != last_rarity {
+            UIK.spacer(UIK.pixels(1), UIK.pixels(6));
+            header := UIK.panel_styled(.MODAL_TRANSP_BLACK);
+            header.width = UIK.flex(1);
+            header.height = UIK.fit();
+            header.padding = v4{8, 6, 8, 6};
+            UIK.panel_begin(header);
+            r_color := rarity_color(seed.custom_rarity);
+            r_ts := UIK.text_title();
+            r_ts.color = r_color;
+            UIK.text(rarity_name(seed.custom_rarity), r_ts);
+            UIK.panel_end();
+            last_rarity = seed.custom_rarity;
+            rarity_set = true;
+        }
+
+        card := UIK.layout_row();
+        card.width = UIK.flex(1);
+        card.height = UIK.pixels(110);
+        card.gap = 12;
+        card.padding = v4{10, 6, 10, 6};
+        card.cross_align = .CENTER;
+        card.show_background = true;
+        card.background = .MODAL_TRANSP_BLACK;
+        UIK.panel_begin(card);
+
+        icon_box := UIK.layout_centered(UIK.pixels(90), UIK.pixels(90));
+        UIK.panel_begin(icon_box);
+        UIK.image_fitted(seed.plant_texture, UIK.image_desc(.CONTAIN));
+        UIK.panel_end();
+
+        info := UIK.layout_column();
+        info.width = UIK.flex(1);
+        info.height = UIK.flex(1);
+        info.gap = 3;
+        info.cross_align = .START;
+        info.main_align = .CENTER;
+        info.show_background = false;
+        UIK.panel_begin(info);
+
+        name_ts := UIK.text_title();
+        name_ts.color = rarity_color(seed.custom_rarity);
+        UIK.text(seed.get_name(), name_ts);
+
+        grow_str: string;
+        if seed.grow_seconds >= 60 {
+            mins := (seed.grow_seconds / 60.0).(s64);
+            secs := (seed.grow_seconds - mins.(float) * 60.0).(s64);
+            if secs > 0 {
+                grow_str = format_string("Grow: %m %0s", {mins, secs});
+            } else {
+                grow_str = format_string("Grow: %m", {mins});
+            }
+        } else {
+            grow_str = format_string("Grow: %s", {seed.grow_seconds.(s64)});
+        }
+        UIK.text(grow_str, UIK.text_body());
+        UIK.text(format_string("Sells for: %", {seed.sell_price}), UIK.text_body());
+
+        UIK.panel_end();
+
+        actions := UIK.layout_column();
+        actions.width = UIK.pixels(160);
+        actions.height = UIK.flex(1);
+        actions.gap = 6;
+        actions.main_align = .CENTER;
+        actions.show_background = false;
+        UIK.panel_begin(actions);
+
+        buy_color: UIK.Panel_Background_Kind = .BUTTON_BASIC_GREEN;
+        if balance < seed.cost {
+            buy_color = .BUTTON_BASIC_RED;
+        }
+        buy_desc := UIK.widget_desc_button_default(buy_color);
+        buy_desc.panel.width = UIK.flex(1);
+        buy_desc.panel.height = UIK.pixels(36);
+        handles.buys[i] = UIK.button(format_string("buy_%", {i}), format_string("Buy %", {seed.cost}), buy_desc);
+
+        select_kind: UIK.Panel_Background_Kind = .BUTTON_BASIC_YELLOW1;
+        if player.selected_seed_id == seed.seed_id {
+            select_kind = .BUTTON_BASIC_GREEN;
+        }
+        sel_desc := UIK.widget_desc_button_default(select_kind);
+        sel_desc.panel.width = UIK.flex(1);
+        sel_desc.panel.height = UIK.pixels(36);
+        sel_label := "Select";
+        if player.selected_seed_id == seed.seed_id {
+            sel_label = "Selected";
+        }
+        handles.selects[i] = UIK.button(format_string("sel_%", {i}), sel_label, sel_desc);
+
+        UIK.panel_end();
+
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(handles.exit) {
+        player.show_seed_shop = false;
+    }
+    for i: 0..all_seeds.count - 1 {
+        if UIK.clicked(handles.buys[i]) {
+            try_buy_seed(player, all_seeds[i]);
+        }
+        if UIK.clicked(handles.selects[i]) {
+            player.selected_seed_id = all_seeds[i].seed_id;
+        }
+    }
+}
+
+try_buy_seed :: proc(player: Player, seed: Seed_Definition) {
+    if !Economy.can_withdraw_currency(player, CURRENCY_ID, seed.cost) {
+        Notifier.notify(player, "Not enough Schleems");
+        return;
+    }
+    item := Items.create_item_instance(seed, 1);
+    will_destroy: bool;
+    if !Items.can_move_item_to_inventory(item, player.default_inventory, ref will_destroy) {
+        Items.destroy_item_instance(item);
+        Notifier.notify(player, "Inventory full");
+        return;
+    }
+    Economy.withdraw_currency(player, CURRENCY_ID, seed.cost);
+    Items.move_item_to_inventory(item, player.default_inventory);
+    if player.selected_seed_id == "" {
+        player.selected_seed_id = seed.seed_id;
+    }
+}
+
+Sell_Shop_Handles :: struct {
+    exit: UIK.Interact_Handle;
+    sell_one: [40]UIK.Interact_Handle;
+    sell_one_used: [40]bool;
+    sell_all_button: UIK.Interact_Handle;
+}
+
+draw_sell_shop_ui :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 15));
+
+    shell := UIK.panel_modal(.BLUE);
+    shell.padding = v4{14, 14, 14, 14};
+    shell.gap = 6;
+    UIK.panel_begin(shell);
+
+    title_desc := UIK.title_area_desc("SELL SHOP");
+    exit_handle := UIK.title_area(title_desc);
+
+    balance := Economy.get_balance(player, CURRENCY_ID);
+    bal_panel := UIK.layout_row();
+    bal_panel.width = UIK.flex(1);
+    bal_panel.height = UIK.fit();
+    bal_panel.cross_align = .CENTER;
+    bal_panel.show_background = false;
+    UIK.panel_begin(bal_panel);
+    UIK.text(format_string("Schleems: %", {balance}), UIK.text_title());
+    UIK.panel_end();
+
+    handles: Sell_Shop_Handles;
+    handles.exit = exit_handle;
+
+    plant_indices: [..]s64;
+    plant_counts: [..]s64;
+    plant_defs: [..]Plant_Definition;
+    inv := player.default_inventory;
+    if inv != null {
+        for i: 0..inv.capacity - 1 {
+            item := inv.get_item(i);
+            if item == null continue;
+            defn := item.get_definition();
+            if defn.#type != Plant_Definition continue;
+            plant_defs.append(defn.(Plant_Definition));
+            plant_indices.append(i);
+            plant_counts.append(item.quantity);
+        }
+    }
+
+    content := UIK.layout_column();
+    content.width = UIK.flex(1);
+    content.height = UIK.flex(1);
+    content.padding = v4{8, 8, 8, 8};
+    content.gap = 6;
+    UIK.list_begin("sell_shop_scroll", content);
+
+    sell_all_handle: UIK.Interact_Handle;
+    sell_all_present := false;
+    if plant_defs.count > 0 {
+        all_row := UIK.layout_row();
+        all_row.width = UIK.flex(1);
+        all_row.height = UIK.fit();
+        all_row.gap = 6;
+        all_row.show_background = false;
+        UIK.panel_begin(all_row);
+        sell_all_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_YELLOW1);
+        sell_all_desc.panel.width = UIK.flex(1);
+        sell_all_desc.panel.height = UIK.pixels(46);
+        sell_all_handle = UIK.button("sell_all", "Sell ALL Plants", sell_all_desc);
+        UIK.panel_end();
+        sell_all_present = true;
+    } else {
+        UIK.spacer(UIK.pixels(1), UIK.pixels(20));
+        UIK.text("Your inventory has no plants to sell.", UIK.text_body());
+        UIK.text("Plant some seeds and come back!", UIK.text_body());
+    }
+
+    for i: 0..plant_defs.count - 1 {
+        if i >= 40 break;
+        plant := plant_defs[i];
+        count := plant_counts[i];
+
+        card := UIK.layout_row();
+        card.width = UIK.flex(1);
+        card.height = UIK.pixels(80);
+        card.gap = 10;
+        card.padding = v4{8, 4, 8, 4};
+        card.cross_align = .CENTER;
+        card.show_background = true;
+        card.background = .MODAL_TRANSP_BLACK;
+        UIK.panel_begin(card);
+
+        icon_box := UIK.layout_centered(UIK.pixels(60), UIK.pixels(60));
+        UIK.panel_begin(icon_box);
+        UIK.image_fitted(plant.get_icon(), UIK.image_desc(.CONTAIN));
+        UIK.panel_end();
+
+        info := UIK.layout_column();
+        info.width = UIK.flex(1);
+        info.height = UIK.flex(1);
+        info.gap = 2;
+        info.main_align = .CENTER;
+        info.cross_align = .START;
+        info.show_background = false;
+        UIK.panel_begin(info);
+
+        n_ts := UIK.text_title();
+        n_ts.color = rarity_color(plant.custom_rarity);
+        UIK.text(format_string("% (x%)", {plant.get_name(), count}), n_ts);
+        UIK.text(format_string("Each: % Schleems", {plant.sell_price}), UIK.text_body());
+
+        UIK.panel_end();
+
+        sell_desc := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN);
+        sell_desc.panel.width = UIK.pixels(150);
+        sell_desc.panel.height = UIK.pixels(50);
+        handles.sell_one[i] = UIK.button(format_string("sell1_%", {i}), "Sell 1", sell_desc);
+        handles.sell_one_used[i] = true;
+
+        UIK.panel_end();
+    }
+
+    UIK.list_end();
+    UIK.panel_end();
+    UIK.end();
+
+    if UIK.clicked(handles.exit) {
+        player.show_sell_shop = false;
+    }
+
+    if sell_all_present {
+        if UIK.clicked(sell_all_handle) {
+            sell_all_plants(player);
+        }
+    }
+
+    for i: 0..plant_defs.count - 1 {
+        if i >= 40 break;
+        if !handles.sell_one_used[i] continue;
+        if UIK.clicked(handles.sell_one[i]) {
+            sell_one_plant_at_slot(player, plant_indices[i], plant_defs[i]);
+        }
+    }
+}
+
+sell_one_plant_at_slot :: proc(player: Player, slot_index: s64, defn: Plant_Definition) {
+    inv := player.default_inventory;
+    if inv == null return;
+    item := inv.get_item(slot_index);
+    if item == null return;
+    item_defn := item.get_definition();
+    if item_defn.#type != Plant_Definition return;
+    if item_defn.get_id() != defn.get_id() return;
+    Economy.deposit_currency(player, CURRENCY_ID, defn.sell_price);
+    Items.destroy_item_instance(item, 1);
+}
+
+sell_all_plants :: proc(player: Player) {
+    inv := player.default_inventory;
+    if inv == null return;
+    total: s64 = 0;
+    for i: 0..inv.capacity - 1 {
+        item := inv.get_item(i);
+        if item == null continue;
+        defn := item.get_definition();
+        if defn.#type != Plant_Definition continue;
+        plant_defn := defn.(Plant_Definition);
+        total += plant_defn.sell_price * item.quantity;
+        Items.destroy_item_instance(item);
+    }
+    if total > 0 {
+        Economy.deposit_currency(player, CURRENCY_ID, total);
+    }
+}

@@ -1,0 +1,78 @@
+import "core:ao"
+
+CURRENCY_ID :: "Schleems";
+PLOT_COUNT :: 4;
+SLOTS_PER_PLOT :: 40;
+SLOT_COLS :: 8;
+SLOT_ROWS :: 5;
+SLOT_SPACING :: 1.1;
+
+ao_before_scene_load :: proc() {
+    Scene.set_auto_save_player_inventory(true);
+
+    coin_icon := get_asset(Texture_Asset, "coin_3e1a18.png");
+    Economy.register_currency(CURRENCY_ID, coin_icon);
+
+    register_all_seeds();
+}
+
+ao_start :: proc() {
+}
+
+ao_update :: proc(dt: float) {
+}
+
+ao_late_update :: proc(dt: float) {
+}
+
+Player :: class : Player_Base {
+    assigned_plot: Plot;
+
+    selected_seed_id: string @ao_serialize;
+
+    show_seed_shop: bool @ao_serialize;
+    show_sell_shop: bool @ao_serialize;
+
+    ao_start :: method() {
+        assign_plot_for_player(this);
+
+        starting_balance := Economy.get_balance(this, CURRENCY_ID);
+        if starting_balance == 0 {
+            Economy.deposit_currency(this, CURRENCY_ID, 100);
+        }
+    }
+
+    ao_update :: method(dt: float) {
+    }
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_world_space_timers();
+
+            draw_topbar(this);
+            draw_teleport_sidebar(this);
+
+            if show_seed_shop {
+                draw_seed_shop_ui(this);
+            }
+            if show_sell_shop {
+                draw_sell_shop_ui(this);
+            }
+        }
+    }
+
+    ao_end :: method() {
+        release_plot_for_player(this);
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool {
+        return true;
+    }
+
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool {
+        return true;
+    }
+
+    ao_on_state_sync :: method() {
+    }
+}

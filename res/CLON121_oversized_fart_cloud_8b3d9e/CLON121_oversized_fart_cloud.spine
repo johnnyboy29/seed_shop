@@ -1,0 +1,376 @@
+{
+"skeleton": { "hash": "/n9i6OJAoN8", "spine": "4.2.43", "x": -732.42, "y": -673.75, "width": 1466, "height": 1347 },
+"bones": [
+	{ "name": "root" },
+	{ "name": "fart_cloud1", "parent": "root", "x": 206.5, "y": -17.5 },
+	{ "name": "big fart cloud/frame A", "parent": "root" },
+	{ "name": "fart_cloud2", "parent": "root", "x": 206.5, "y": -17.5 },
+	{ "name": "fart_cloud3", "parent": "root", "x": 206.5, "y": -17.5 },
+	{ "name": "fart_cloud4", "parent": "root", "x": 206.5, "y": -17.5 },
+	{ "name": "fart_cloud5", "parent": "root", "x": 206.5, "y": -17.5 }
+],
+"slots": [
+	{ "name": "fart_cloud1", "bone": "fart_cloud1" },
+	{ "name": "fart_cloud2", "bone": "fart_cloud2" },
+	{ "name": "fart_cloud3", "bone": "fart_cloud3" },
+	{ "name": "fart_cloud4", "bone": "fart_cloud4" },
+	{ "name": "fart_cloud5", "bone": "fart_cloud5" },
+	{ "name": "big fart cloud-frame A", "bone": "big fart cloud/frame A", "attachment": "big fart cloud/frame A" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"big fart cloud-frame A": {
+				"big fart cloud/frame A": { "x": 0.58, "y": -0.25, "width": 1466, "height": 1347 },
+				"big fart cloud/frame B": { "x": -1.11, "y": -3.64, "width": 1523, "height": 1365 },
+				"big fart cloud/frame C": { "x": -21.46, "y": -3.64, "width": 1536, "height": 1377 },
+				"big fart cloud/frame D": { "x": 12.45, "y": 28.57, "width": 1505, "height": 1378 }
+			},
+			"fart_cloud1": {
+				"fart_cloud1": { "x": 6.26, "y": -6.77, "rotation": 120.26, "width": 117, "height": 139 },
+				"fart_cloud2": { "x": 8.42, "y": -5.51, "rotation": 120.26, "width": 163, "height": 206 },
+				"fart_cloud3": { "x": 14.32, "y": 0.25, "rotation": 120.26, "width": 169, "height": 196 },
+				"fart_cloud4": { "x": 14.54, "y": -3.09, "rotation": 120.26, "width": 165, "height": 203 }
+			},
+			"fart_cloud2": {
+				"fart_cloud1": { "x": 6.26, "y": -6.77, "rotation": 120.26, "width": 117, "height": 139 },
+				"fart_cloud2": { "x": 8.42, "y": -5.51, "rotation": 120.26, "width": 163, "height": 206 },
+				"fart_cloud3": { "x": 14.32, "y": 0.25, "rotation": 120.26, "width": 169, "height": 196 },
+				"fart_cloud4": { "x": 14.54, "y": -3.09, "rotation": 120.26, "width": 165, "height": 203 }
+			},
+			"fart_cloud3": {
+				"fart_cloud1": { "x": 6.26, "y": -6.77, "rotation": 120.26, "width": 117, "height": 139 },
+				"fart_cloud2": { "x": 8.42, "y": -5.51, "rotation": 120.26, "width": 163, "height": 206 },
+				"fart_cloud3": { "x": 14.32, "y": 0.25, "rotation": 120.26, "width": 169, "height": 196 },
+				"fart_cloud4": { "x": 14.54, "y": -3.09, "rotation": 120.26, "width": 165, "height": 203 }
+			},
+			"fart_cloud4": {
+				"fart_cloud1": { "x": 6.26, "y": -6.77, "rotation": 120.26, "width": 117, "height": 139 },
+				"fart_cloud2": { "x": 8.42, "y": -5.51, "rotation": 120.26, "width": 163, "height": 206 },
+				"fart_cloud3": { "x": 14.32, "y": 0.25, "rotation": 120.26, "width": 169, "height": 196 },
+				"fart_cloud4": { "x": 14.54, "y": -3.09, "rotation": 120.26, "width": 165, "height": 203 }
+			},
+			"fart_cloud5": {
+				"fart_cloud1": { "x": 6.26, "y": -6.77, "rotation": 120.26, "width": 117, "height": 139 },
+				"fart_cloud2": { "x": 8.42, "y": -5.51, "rotation": 120.26, "width": 163, "height": 206 },
+				"fart_cloud3": { "x": 14.32, "y": 0.25, "rotation": 120.26, "width": 169, "height": 196 },
+				"fart_cloud4": { "x": 14.54, "y": -3.09, "rotation": 120.26, "width": 165, "height": 203 }
+			}
+		}
+	}
+],
+"animations": {
+	"appear": {
+		"slots": {
+			"big fart cloud-frame A": {
+				"rgba": [
+					{ "color": "ffffff00" },
+					{ "time": 0.875, "color": "ffffffff" }
+				],
+				"attachment": [
+					{ "time": 0.1667, "name": "big fart cloud/frame B" },
+					{ "time": 0.3333, "name": "big fart cloud/frame C" },
+					{ "time": 0.5, "name": "big fart cloud/frame D" },
+					{ "time": 0.6667, "name": "big fart cloud/frame A" },
+					{ "time": 0.8333, "name": "big fart cloud/frame B" },
+					{ "time": 1, "name": "big fart cloud/frame C" },
+					{ "time": 1.1667, "name": "big fart cloud/frame D" },
+					{ "time": 1.3333, "name": "big fart cloud/frame A" },
+					{ "time": 1.5, "name": "big fart cloud/frame B" },
+					{ "time": 1.6667, "name": "big fart cloud/frame C" },
+					{ "time": 1.8333, "name": "big fart cloud/frame D" },
+					{ "time": 2, "name": "big fart cloud/frame A" },
+					{ "time": 2.1667, "name": "big fart cloud/frame B" },
+					{ "time": 2.3333, "name": "big fart cloud/frame C" },
+					{ "time": 2.5, "name": "big fart cloud/frame D" },
+					{ "time": 2.6667, "name": "big fart cloud/frame A" },
+					{ "time": 2.8333, "name": "big fart cloud/frame B" },
+					{ "time": 3, "name": "big fart cloud/frame C" },
+					{ "time": 3.1667, "name": "big fart cloud/frame D" },
+					{ "time": 3.3333, "name": "big fart cloud/frame A" },
+					{ "time": 3.5, "name": "big fart cloud/frame B" },
+					{ "time": 3.6667, "name": "big fart cloud/frame C" },
+					{ "time": 3.8333, "name": "big fart cloud/frame D" },
+					{ "time": 4, "name": "big fart cloud/frame A" },
+					{ "time": 4.1667, "name": "big fart cloud/frame B" },
+					{ "time": 4.3333, "name": "big fart cloud/frame C" },
+					{ "time": 4.5, "name": "big fart cloud/frame D" },
+					{ "time": 4.6667, "name": "big fart cloud/frame A" },
+					{ "time": 4.8333, "name": "big fart cloud/frame B" },
+					{ "time": 5, "name": "big fart cloud/frame C" },
+					{ "time": 5.1667, "name": "big fart cloud/frame D" },
+					{ "time": 5.3333, "name": "big fart cloud/frame A" },
+					{ "time": 5.5, "name": "big fart cloud/frame B" },
+					{ "time": 5.6667, "name": "big fart cloud/frame C" },
+					{ "time": 5.8333, "name": "big fart cloud/frame D" },
+					{ "time": 6, "name": "big fart cloud/frame A" },
+					{ "time": 6.1667, "name": "big fart cloud/frame B" },
+					{ "time": 6.3333, "name": "big fart cloud/frame C" },
+					{ "time": 6.5, "name": "big fart cloud/frame D" },
+					{ "time": 6.6667, "name": "big fart cloud/frame A" },
+					{ "time": 6.7917, "name": "big fart cloud/frame C" },
+					{ "time": 6.9167, "name": "big fart cloud/frame D" },
+					{ "time": 7.0417, "name": "big fart cloud/frame A" }
+				]
+			}
+		},
+		"bones": {
+			"big fart cloud/frame A": {
+				"scale": [
+					{
+						"x": 0.184,
+						"y": 0.184,
+						"curve": [ 2.384, 0.652, 4.352, 1, 2.384, 0.652, 4.352, 1 ]
+					},
+					{ "time": 7.0417 }
+				]
+			},
+			"fart_cloud2": {
+				"rotate": [
+					{ "value": -93.03 }
+				]
+			},
+			"root": {
+				"scale": [
+					{},
+					{ "time": 1.3333, "x": 1.421, "y": 1.421 },
+					{ "time": 5.4583, "x": 1.479, "y": 1.479 }
+				]
+			}
+		}
+	},
+	"despawn": {
+		"slots": {
+			"big fart cloud-frame A": {
+				"rgba": [
+					{ "color": "ffffffff" },
+					{ "time": 1.3333, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.1667, "name": "big fart cloud/frame B" },
+					{ "time": 0.3333, "name": "big fart cloud/frame C" },
+					{ "time": 0.5, "name": "big fart cloud/frame D" },
+					{ "time": 0.6667, "name": "big fart cloud/frame A" },
+					{ "time": 0.8333, "name": "big fart cloud/frame B" },
+					{ "time": 1, "name": "big fart cloud/frame C" },
+					{ "time": 1.1667, "name": "big fart cloud/frame D" },
+					{ "time": 1.3333, "name": "big fart cloud/frame A" }
+				]
+			}
+		},
+		"bones": {
+			"big fart cloud/frame A": {
+				"translate": [
+					{},
+					{ "time": 1.3333, "y": 105.36 }
+				]
+			},
+			"fart_cloud2": {
+				"rotate": [
+					{ "value": -93.03 }
+				]
+			},
+			"root": {
+				"scale": [
+					{},
+					{ "time": 1.3333, "x": 1.421, "y": 1.421 }
+				]
+			}
+		}
+	},
+	"loop": {
+		"slots": {
+			"big fart cloud-frame A": {
+				"attachment": [
+					{ "time": 0.1667, "name": "big fart cloud/frame B" },
+					{ "time": 0.3333, "name": "big fart cloud/frame C" },
+					{ "time": 0.5, "name": "big fart cloud/frame D" },
+					{ "time": 0.6667, "name": "big fart cloud/frame A" },
+					{ "time": 0.8333, "name": "big fart cloud/frame B" },
+					{ "time": 1, "name": "big fart cloud/frame C" },
+					{ "time": 1.1667, "name": "big fart cloud/frame D" },
+					{ "time": 1.3333, "name": "big fart cloud/frame A" }
+				]
+			},
+			"fart_cloud1": {
+				"rgba": [
+					{ "color": "ffffff00" },
+					{ "time": 0.1667, "color": "ffffffff", "curve": "stepped" },
+					{ "time": 0.5, "color": "ffffffff" },
+					{ "time": 0.8333, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "name": "fart_cloud1" },
+					{ "time": 0.1667, "name": "fart_cloud2" },
+					{ "time": 0.25, "name": "fart_cloud3" },
+					{ "time": 0.3333, "name": "fart_cloud4" },
+					{ "time": 0.4167, "name": "fart_cloud2" },
+					{ "time": 0.5, "name": "fart_cloud3" },
+					{ "time": 0.5833, "name": "fart_cloud4" },
+					{ "time": 0.6667, "name": "fart_cloud2" },
+					{ "time": 0.75, "name": "fart_cloud3" },
+					{ "time": 0.8333, "name": "fart_cloud4" }
+				]
+			},
+			"fart_cloud2": {
+				"rgba": [
+					{ "time": 0.5, "color": "ffffff00" },
+					{ "time": 0.6667, "color": "ffffffff", "curve": "stepped" },
+					{ "time": 1, "color": "ffffffff" },
+					{ "time": 1.3333, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.5, "name": "fart_cloud1" },
+					{ "time": 0.6667, "name": "fart_cloud2" },
+					{ "time": 0.75, "name": "fart_cloud3" },
+					{ "time": 0.8333, "name": "fart_cloud4" },
+					{ "time": 0.9167, "name": "fart_cloud2" },
+					{ "time": 1, "name": "fart_cloud3" },
+					{ "time": 1.0833, "name": "fart_cloud4" },
+					{ "time": 1.1667, "name": "fart_cloud2" },
+					{ "time": 1.25, "name": "fart_cloud3" },
+					{ "time": 1.3333, "name": "fart_cloud4" }
+				]
+			},
+			"fart_cloud3": {
+				"rgba": [
+					{ "time": 0.3333, "color": "ffffff00" },
+					{ "time": 0.5, "color": "ffffffff", "curve": "stepped" },
+					{ "time": 0.8333, "color": "ffffffff" },
+					{ "time": 1.1667, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.3333, "name": "fart_cloud1" },
+					{ "time": 0.5, "name": "fart_cloud2" },
+					{ "time": 0.5833, "name": "fart_cloud3" },
+					{ "time": 0.6667, "name": "fart_cloud4" },
+					{ "time": 0.75, "name": "fart_cloud2" },
+					{ "time": 0.8333, "name": "fart_cloud3" },
+					{ "time": 0.9167, "name": "fart_cloud4" },
+					{ "time": 1, "name": "fart_cloud2" },
+					{ "time": 1.0833, "name": "fart_cloud3" },
+					{ "time": 1.1667, "name": "fart_cloud4" }
+				]
+			},
+			"fart_cloud4": {
+				"rgba": [
+					{ "time": 0.2083, "color": "ffffff00" },
+					{ "time": 0.375, "color": "ffffffff", "curve": "stepped" },
+					{ "time": 0.7083, "color": "ffffffff" },
+					{ "time": 1.0417, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.2083, "name": "fart_cloud1" },
+					{ "time": 0.375, "name": "fart_cloud2" },
+					{ "time": 0.4583, "name": "fart_cloud3" },
+					{ "time": 0.5417, "name": "fart_cloud4" },
+					{ "time": 0.625, "name": "fart_cloud2" },
+					{ "time": 0.7083, "name": "fart_cloud3" },
+					{ "time": 0.7917, "name": "fart_cloud4" },
+					{ "time": 0.875, "name": "fart_cloud2" },
+					{ "time": 0.9583, "name": "fart_cloud3" },
+					{ "time": 1.0417, "name": "fart_cloud4" }
+				]
+			},
+			"fart_cloud5": {
+				"rgba": [
+					{ "time": 0.2083, "color": "ffffff00" },
+					{ "time": 0.375, "color": "ffffffff", "curve": "stepped" },
+					{ "time": 0.7083, "color": "ffffffff" },
+					{ "time": 1.0417, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.2083, "name": "fart_cloud1" },
+					{ "time": 0.375, "name": "fart_cloud2" },
+					{ "time": 0.4583, "name": "fart_cloud3" },
+					{ "time": 0.5417, "name": "fart_cloud4" },
+					{ "time": 0.625, "name": "fart_cloud2" },
+					{ "time": 0.7083, "name": "fart_cloud3" },
+					{ "time": 0.7917, "name": "fart_cloud4" },
+					{ "time": 0.875, "name": "fart_cloud2" },
+					{ "time": 0.9583, "name": "fart_cloud3" },
+					{ "time": 1.0417, "name": "fart_cloud4" }
+				]
+			}
+		},
+		"bones": {
+			"fart_cloud1": {
+				"translate": [
+					{
+						"x": 376.96,
+						"y": 4.43,
+						"curve": [ 0.297, 606.94, 0.525, 884.03, 0.278, 4.43, 0.556, 0 ]
+					},
+					{ "time": 0.8333, "x": 884.03 }
+				]
+			},
+			"fart_cloud2": {
+				"rotate": [
+					{ "time": 0.5, "value": 116.92 }
+				],
+				"translatex": [
+					{
+						"time": 0.5,
+						"value": -474.61,
+						"curve": [ 0.799, -583.62, 1.025, -705.32 ]
+					},
+					{ "time": 1.3333, "value": -705.32 }
+				],
+				"translatey": [
+					{
+						"time": 0.5,
+						"value": 469.86,
+						"curve": [ 0.779, 673.26, 1.056, 1013.6 ]
+					},
+					{ "time": 1.3333, "value": 1013.6 }
+				]
+			},
+			"fart_cloud3": {
+				"rotate": [
+					{ "time": 0.3333, "value": -121.75 },
+					{ "time": 1.1667, "value": -116.92 }
+				],
+				"translate": [
+					{
+						"time": 0.3333,
+						"x": -402.21,
+						"y": -464.44,
+						"curve": [ 0.631, -547.15, 0.859, -673.84, 0.623, -624.66, 0.89, -867.8 ]
+					},
+					{ "time": 1.1667, "x": -673.84, "y": -921.2 }
+				]
+			},
+			"fart_cloud4": {
+				"rotate": [
+					{ "time": 0.2083, "value": -183.41 }
+				],
+				"translate": [
+					{
+						"time": 0.2083,
+						"x": -759.41,
+						"y": -24.99,
+						"curve": [ 0.508, -1072.66, 0.734, -1326.19, 0.487, -138.68, 0.764, -257.43 ]
+					},
+					{ "time": 1.0417, "x": -1326.19, "y": -257.43 }
+				]
+			},
+			"fart_cloud5": {
+				"rotate": [
+					{ "time": 0.2083, "value": 48.41 },
+					{ "time": 1.0417, "value": 50.81 }
+				],
+				"translate": [
+					{
+						"time": 0.2083,
+						"x": 145.27,
+						"y": 386.9,
+						"curve": [ 0.505, 375.25, 0.734, 589.83, 0.383, 487.63, 0.764, 937.78 ]
+					},
+					{ "time": 1.0417, "x": 589.83, "y": 937.78 }
+				]
+			}
+		}
+	}
+}
+}

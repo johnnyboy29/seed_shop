@@ -1,0 +1,127 @@
+{
+  "game": "Schleem Gardens",
+  "description": "Multiplayer farming game with 4 player-owned garden plots, 20 seeds across 6 rarities, a seed shop and a sell shop with teleport buttons.",
+  "currency": "Schleems",
+  "seeds": [
+    { "id": "carrot",      "name": "Carrot",       "rarity": "COMMON",    "cost": 10,      "grow_seconds": 60,   "sell": 25 },
+    { "id": "lettuce",     "name": "Lettuce",      "rarity": "COMMON",    "cost": 30,      "grow_seconds": 90,   "sell": 75 },
+    { "id": "potato",      "name": "Potato",       "rarity": "COMMON",    "cost": 60,      "grow_seconds": 120,  "sell": 150 },
+    { "id": "onion",       "name": "Onion",        "rarity": "COMMON",    "cost": 100,     "grow_seconds": 150,  "sell": 250 },
+    { "id": "tomato",      "name": "Tomato",       "rarity": "UNCOMMON",  "cost": 200,     "grow_seconds": 180,  "sell": 500 },
+    { "id": "cucumber",    "name": "Cucumber",     "rarity": "UNCOMMON",  "cost": 350,     "grow_seconds": 240,  "sell": 900 },
+    { "id": "corn",        "name": "Corn",         "rarity": "UNCOMMON",  "cost": 600,     "grow_seconds": 300,  "sell": 1500 },
+    { "id": "pepper",      "name": "Pepper",       "rarity": "UNCOMMON",  "cost": 1000,    "grow_seconds": 360,  "sell": 2500 },
+    { "id": "pumpkin",     "name": "Pumpkin",      "rarity": "RARE",      "cost": 2000,    "grow_seconds": 420,  "sell": 5000 },
+    { "id": "watermelon",  "name": "Watermelon",   "rarity": "RARE",      "cost": 4000,    "grow_seconds": 480,  "sell": 10000 },
+    { "id": "strawberry",  "name": "Strawberry",   "rarity": "RARE",      "cost": 7000,    "grow_seconds": 540,  "sell": 17500 },
+    { "id": "blueberry",   "name": "Blueberry",    "rarity": "RARE",      "cost": 12000,   "grow_seconds": 600,  "sell": 30000 },
+    { "id": "pineapple",   "name": "Pineapple",    "rarity": "RARE",      "cost": 20000,   "grow_seconds": 660,  "sell": 50000 },
+    { "id": "apple",       "name": "Golden Apple", "rarity": "LEGENDARY", "cost": 35000,   "grow_seconds": 780,  "sell": 90000 },
+    { "id": "banana",      "name": "Banana",       "rarity": "LEGENDARY", "cost": 60000,   "grow_seconds": 900,  "sell": 150000 },
+    { "id": "orange",      "name": "Sun Orange",   "rarity": "MYTHIC",    "cost": 90000,   "grow_seconds": 1020, "sell": 225000 },
+    { "id": "dragonfruit", "name": "Dragonfruit",  "rarity": "MYTHIC",    "cost": 140000,  "grow_seconds": 1200, "sell": 350000 },
+    { "id": "starfruit",   "name": "Starfruit",    "rarity": "MYTHIC",    "cost": 200000,  "grow_seconds": 1320, "sell": 500000 },
+    { "id": "cosmic",      "name": "Cosmic Pepper","rarity": "DIVINE",    "cost": 300000,  "grow_seconds": 1500, "sell": 750000 },
+    { "id": "ghost",       "name": "Ghost Pepper", "rarity": "DIVINE",    "cost": 400000,  "grow_seconds": 1800, "sell": 1000000 }
+  ],
+  "scene_epics": [
+    {
+      "name": "Green Baseplate + 4 Garden Plots",
+      "status": "pending",
+      "tasks": [
+        { "name": "Tile large green grass baseplate", "done": false },
+        { "name": "Build 4 dirt garden plots (each 8x5 grid, 40 slots) at corners of central area", "done": false },
+        { "name": "Add plot signs labeled Plot 1-4", "done": false }
+      ],
+      "verified": false
+    },
+    {
+      "name": "Shops + Pathways",
+      "status": "pending",
+      "tasks": [
+        { "name": "Place seed shop building with sign", "done": false },
+        { "name": "Place sell shop building with sign", "done": false },
+        { "name": "Add a central plaza spawn area", "done": false }
+      ],
+      "verified": false
+    }
+  ],
+  "script_epics": [
+    {
+      "name": "Plot Ownership",
+      "status": "pending",
+      "tasks": [
+        { "name": "Plot_Manager assigns one of 4 plots to a player on join", "done": false },
+        { "name": "Release plot on leave", "done": false },
+        { "name": "Plot teleport button (UIK)", "done": false }
+      ],
+      "gate_test": "test_gate_plot_ownership",
+      "gate_passed": false
+    },
+    {
+      "name": "Seed Items + Inventory",
+      "status": "pending",
+      "tasks": [
+        { "name": "Register 20 Seed_Definition entries with rarities, costs, grow times", "done": false },
+        { "name": "Register Plant items separately for harvest inventory", "done": false },
+        { "name": "Enable inventory auto-save", "done": false }
+      ],
+      "gate_test": "test_gate_seed_items",
+      "gate_passed": false
+    },
+    {
+      "name": "Planting + Grow Timer",
+      "status": "pending",
+      "tasks": [
+        { "name": "Each plot has 40 plant slot Interactables", "done": false },
+        { "name": "Player selects seed in hotbar, interacts with empty slot to plant", "done": false },
+        { "name": "World-space progress bar timer above each growing plant, counting down minutes", "done": false },
+        { "name": "Plant becomes harvestable when timer hits 0", "done": false }
+      ],
+      "gate_test": "test_gate_planting",
+      "gate_passed": false
+    },
+    {
+      "name": "Harvest",
+      "status": "pending",
+      "tasks": [
+        { "name": "Interact with grown plant to harvest into inventory", "done": false },
+        { "name": "SFX + particles on harvest", "done": false }
+      ],
+      "gate_test": "test_gate_harvest",
+      "gate_passed": false
+    },
+    {
+      "name": "Seed Shop",
+      "status": "pending",
+      "tasks": [
+        { "name": "Seed shop Interactable opens UIK shop", "done": false },
+        { "name": "UIK shop shows all 20 seeds in rarity sections with buy buttons", "done": false },
+        { "name": "Withdraw Schleems on purchase, give seed to inventory", "done": false }
+      ],
+      "gate_test": "test_gate_seed_shop",
+      "gate_passed": false
+    },
+    {
+      "name": "Sell Shop",
+      "status": "pending",
+      "tasks": [
+        { "name": "Sell shop Interactable opens sell UI", "done": false },
+        { "name": "List all plant stacks in inventory, sell individually or sell all", "done": false },
+        { "name": "Deposit Schleems on sale", "done": false }
+      ],
+      "gate_test": "test_gate_sell_shop",
+      "gate_passed": false
+    },
+    {
+      "name": "HUD + Teleports",
+      "status": "pending",
+      "tasks": [
+        { "name": "Topbar with Schleems balance", "done": false },
+        { "name": "Sidebar with teleport buttons to seed shop, sell shop, and plot", "done": false }
+      ],
+      "gate_test": "test_gate_hud",
+      "gate_passed": false
+    }
+  ]
+}
