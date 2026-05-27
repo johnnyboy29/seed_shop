@@ -1,0 +1,177 @@
+import "core:ao"
+
+SEED_COUNT :: 20;
+MAX_PLANTS_PER_GARDEN :: 40;
+SCHLEEMS :: "Schleems";
+
+Seed_Rarity :: enum { COMMON; UNCOMMON; RARE; LEGENDARY; MYTHICAL; DIVINE; }
+
+Seed_Def :: struct {
+    id: string;
+    name: string;
+    rarity: Seed_Rarity;
+    price: s64;
+    grow_seconds: float;
+    sell_value: s64;
+    tint: v4;
+}
+
+seed_defs: [SEED_COUNT]Seed_Def;
+seed_items: [SEED_COUNT]Item_Definition;
+coin_icon: Texture_Asset;
+seed_icon: Texture_Asset;
+plant_icon: Texture_Asset;
+buy_sfx: SFX_Asset;
+collect_sfx: SFX_Asset;
+
+seed_def :: proc(i: s64) -> Seed_Def { return seed_defs[i]; }
+seed_item :: proc(i: s64) -> Item_Definition { return seed_items[i]; }
+
+rarity_label :: proc(r: Seed_Rarity) -> string {
+    switch r {
+        case .COMMON: return "Common";
+        case .UNCOMMON: return "Uncommon";
+        case .RARE: return "Rare";
+        case .LEGENDARY: return "Legend";
+        case .MYTHICAL: return "Mythic";
+        case .DIVINE: return "Divine";
+    }
+    return "Seed";
+}
+
+setup_seed_defs :: proc() {
+    seed_defs[0] = Seed_Def{id="seed_carrot", name="Carrot", rarity=.COMMON, price=10, grow_seconds=60, sell_value=18, tint={1.0,0.45,0.05,1}};
+    seed_defs[1] = Seed_Def{id="seed_potato", name="Potato", rarity=.COMMON, price=25, grow_seconds=75, sell_value=44, tint={0.70,0.45,0.25,1}};
+    seed_defs[2] = Seed_Def{id="seed_lettuce", name="Lettuce", rarity=.COMMON, price=45, grow_seconds=90, sell_value=78, tint={0.30,0.95,0.20,1}};
+    seed_defs[3] = Seed_Def{id="seed_onion", name="Onion", rarity=.COMMON, price=80, grow_seconds=110, sell_value=135, tint={0.95,0.90,0.65,1}};
+    seed_defs[4] = Seed_Def{id="seed_tomato", name="Tomato", rarity=.UNCOMMON, price=150, grow_seconds=150, sell_value=260, tint={1.0,0.1,0.1,1}};
+    seed_defs[5] = Seed_Def{id="seed_corn", name="Corn", rarity=.UNCOMMON, price=300, grow_seconds=180, sell_value=520, tint={1.0,0.9,0.1,1}};
+    seed_defs[6] = Seed_Def{id="seed_strawberry", name="Berry", rarity=.UNCOMMON, price=600, grow_seconds=210, sell_value=1050, tint={1.0,0.1,0.35,1}};
+    seed_defs[7] = Seed_Def{id="seed_pumpkin", name="Pumpkin", rarity=.UNCOMMON, price=1200, grow_seconds=240, sell_value=2100, tint={1.0,0.5,0.0,1}};
+    seed_defs[8] = Seed_Def{id="seed_sunflower", name="Sunflower", rarity=.RARE, price=2500, grow_seconds=300, sell_value=4400, tint={1.0,0.85,0.0,1}};
+    seed_defs[9] = Seed_Def{id="seed_watermelon", name="Melon", rarity=.RARE, price=5000, grow_seconds=360, sell_value=9000, tint={0.10,0.75,0.25,1}};
+    seed_defs[10] = Seed_Def{id="seed_blueberry", name="Blueberry", rarity=.RARE, price=9000, grow_seconds=420, sell_value=16000, tint={0.15,0.25,1.0,1}};
+    seed_defs[11] = Seed_Def{id="seed_dragonfruit", name="Dragon", rarity=.RARE, price=16000, grow_seconds=480, sell_value=29000, tint={1.0,0.0,0.75,1}};
+    seed_defs[12] = Seed_Def{id="seed_crystal_cabbage", name="Crystal", rarity=.RARE, price=28000, grow_seconds=540, sell_value=51000, tint={0.35,1.0,1.0,1}};
+    seed_defs[13] = Seed_Def{id="seed_gold_apple", name="Gold Apple", rarity=.LEGENDARY, price=50000, grow_seconds=720, sell_value=93000, tint={1.0,0.75,0.05,1}};
+    seed_defs[14] = Seed_Def{id="seed_moonflower", name="Moonflower", rarity=.LEGENDARY, price=85000, grow_seconds=900, sell_value=160000, tint={0.75,0.75,1.0,1}};
+    seed_defs[15] = Seed_Def{id="seed_starfruit", name="Starfruit", rarity=.MYTHICAL, price=125000, grow_seconds=1080, sell_value=240000, tint={1.0,1.0,0.25,1}};
+    seed_defs[16] = Seed_Def{id="seed_void_grape", name="Void Grape", rarity=.MYTHICAL, price=180000, grow_seconds=1260, sell_value=350000, tint={0.35,0.05,0.65,1}};
+    seed_defs[17] = Seed_Def{id="seed_phoenix_pear", name="Phoenix", rarity=.MYTHICAL, price=250000, grow_seconds=1500, sell_value=490000, tint={1.0,0.2,0.0,1}};
+    seed_defs[18] = Seed_Def{id="seed_angel_melon", name="Angel", rarity=.DIVINE, price=320000, grow_seconds=1800, sell_value=650000, tint={1.0,1.0,0.9,1}};
+    seed_defs[19] = Seed_Def{id="seed_ghost_pepper", name="Ghost Pepper", rarity=.DIVINE, price=400000, grow_seconds=2400, sell_value=840000, tint={0.9,0.95,1.0,1}};
+}
+
+ao_before_scene_load :: proc() {
+    coin_icon = get_asset(Texture_Asset, "$AO/ui/kit/Icons/coin/coin_icon.png");
+    seed_icon = get_asset(Texture_Asset, "$AO/ui/kit/Icons/ingredients/food_ingredients_icon_f.png");
+    plant_icon = get_asset(Texture_Asset, "sign_carrot_e06062.png");
+    buy_sfx = get_asset(SFX_Asset, "SFX_UI_Click_Buy_d664b5.wav");
+    collect_sfx = get_asset(SFX_Asset, "collect_coin_9b5b9c.wav");
+    Economy.register_currency(SCHLEEMS, coin_icon);
+    Scene.set_player_inventory_capacity(80);
+    Scene.set_auto_save_player_inventory(true);
+    setup_seed_defs();
+    for i: 0..SEED_COUNT-1 {
+        tier: Item_Tier = .COMMON;
+        if seed_defs[i].rarity == .UNCOMMON { tier = .UNCOMMON; }
+        if seed_defs[i].rarity == .RARE { tier = .RARE; }
+        if seed_defs[i].rarity == .LEGENDARY { tier = .LEGENDARY; }
+        if seed_defs[i].rarity == .MYTHICAL || seed_defs[i].rarity == .DIVINE { tier = .MYTHIC; }
+        seed_items[i] = Items.register_item_definition({seed_defs[i].id, seed_defs[i].name, seed_icon, 99, tier});
+    }
+}
+
+ao_start :: proc() {}
+ao_update :: proc(dt: float) {}
+ao_late_update :: proc(dt: float) {}
+
+play_sfx_at :: proc(asset: SFX_Asset, e: Entity, volume: float) {
+    desc := SFX.default_sfx_desc();
+    desc.entity_to_follow = e.id;
+    desc.volume = volume;
+    desc.speed_perturb = 0.08;
+    SFX.play(asset, desc);
+}
+
+count_seed :: proc(player: Player, seed_index: s64) -> s64 {
+    total: s64 = 0;
+    defn := seed_item(seed_index);
+    for slot: 0..player.default_inventory.capacity-1 {
+        item := player.default_inventory.get_item(slot);
+        if item == null continue;
+        if item.get_definition() == defn { total += item.quantity; }
+    }
+    return total;
+}
+
+remove_one_seed :: proc(player: Player, seed_index: s64) -> bool {
+    defn := seed_item(seed_index);
+    for slot: 0..player.default_inventory.capacity-1 {
+        item := player.default_inventory.get_item(slot);
+        if item == null continue;
+        if item.get_definition() == defn {
+            Items.destroy_item_instance(item, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+give_seed :: proc(player: Player, seed_index: s64, count: s64) -> bool {
+    item := Items.create_item_instance(seed_item(seed_index), count);
+    destroyed: bool;
+    moved := Items.move_as_many_items_as_possible_to_inventory(item, player.default_inventory, ref destroyed);
+    return moved == count;
+}
+
+buy_seed_for_player :: proc(player: Player, seed_index: s64) {
+    d := seed_def(seed_index);
+    if !Economy.can_withdraw_currency(player, SCHLEEMS, d.price) {
+        Notifier.notify(player, "Need % Schleems", {d.price});
+        return;
+    }
+    if !give_seed(player, seed_index, 1) {
+        Notifier.notify(player, "Inventory full");
+        return;
+    }
+    Economy.withdraw_currency(player, SCHLEEMS, d.price);
+    play_sfx_at(buy_sfx, player.entity, 0.45);
+}
+
+Player :: class : Player_Base {
+    selected_seed: s64;
+    owned_plot: Garden_Plot;
+    show_seed_shop: bool;
+    show_sell_shop: bool;
+    has_start_bonus: bool;
+    sell_burst_until: float;
+
+    ao_start :: method() {
+        selected_seed = 0;
+        assign_player_plot(this);
+        if !has_start_bonus {
+            Economy.deposit_currency(this, SCHLEEMS, 250);
+            has_start_bonus = true;
+        }
+    }
+
+    ao_update :: method(dt: float) {}
+
+    ao_late_update :: method(dt: float) {
+        if is_local_or_server() {
+            draw_player_hud(this);
+            draw_garden_timers(this);
+            if show_seed_shop { draw_seed_shop(this); }
+            if show_sell_shop { draw_sell_shop(this); }
+        }
+    }
+
+    ao_end :: method() {
+        if #alive(owned_plot) { owned_plot.reset_for_leaving_player(); }
+    }
+
+    ao_can_use_ability :: method(ability: Ability_Base) -> bool { return true; }
+    ao_can_use_interactable :: method(interactable: Interactable) -> bool { return true; }
+    ao_on_state_sync :: method() {}
+}

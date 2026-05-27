@@ -1,0 +1,6 @@
+{
+  "game": "Schleem Gardens",
+  "description": "A multiplayer four-plot gardening game with 20 seed types, grow timers, seed and sell shops, and Schleems economy.",
+  "scene_epics": [{"name":"Four Garden World","status":"done","tasks":[{"name":"Green baseplate","done":true},{"name":"Four player gardens","done":true},{"name":"Seed and sell shop landmarks","done":true}],"verified":true}],
+  "script_epics": [{"name":"Gardening Economy","status":"done","tasks":[{"name":"Register Schleems and 20 seed item definitions","done":true},{"name":"Assign multiplayer garden plots","done":true},{"name":"Plant seeds with 40-slot cap and grow timers","done":true},{"name":"Seed shop, sell shop, teleport buttons, harvest/sell loop","done":true}],"gate_test":"test_gate_gardening_economy","gate_passed":true}]
+}

@@ -1,0 +1,32 @@
+test_gate_gardening_economy :: proc() {
+    Test.wait_seconds(1.0);
+    Test.assert_entity_exists("plot one exists", "Garden_Plot_1");
+    Test.assert_entity_exists("plot two exists", "Garden_Plot_2");
+    Test.assert_entity_exists("plot three exists", "Garden_Plot_3");
+    Test.assert_entity_exists("plot four exists", "Garden_Plot_4");
+    Test.assert_entity_exists("seed shop exists", "Seed_Shop");
+    Test.assert_entity_exists("sell shop exists", "Sell_Shop");
+
+    Test.teleport({0, 11.2});
+    Test.wait_seconds(0.5);
+    Test.interact_with("Seed_Shop");
+    Test.wait_seconds(0.5);
+    Test.screenshot("seed_shop_ui");
+    Test.interact_with("Seed_Shop");
+    Test.wait_seconds(1.0);
+    Test.assert_player_has_item("bought carrot seed", "seed_carrot");
+
+    Test.teleport({-9, 0.3});
+    Test.wait_seconds(0.5);
+    Test.interact_with("Garden_Plot_1");
+    Test.wait_seconds(1.0);
+    Test.assert_entity_count_gt("planted one garden plant", "Garden_Plant", 0);
+    Test.screenshot("planted_timer");
+
+    Test.teleport({0, -15.2});
+    Test.wait_seconds(0.5);
+    Test.interact_with("Sell_Shop");
+    Test.wait_seconds(0.5);
+    Test.screenshot("sell_shop_ui");
+}
+

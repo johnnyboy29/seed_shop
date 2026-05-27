@@ -1,0 +1,196 @@
+Garden_Plot :: class : Interactable {
+    plot_index: s64 @ao_serialize;
+    owner_user_id: string;
+    owner_name: string;
+    plant_count: s64;
+    occupied: [MAX_PLANTS_PER_GARDEN]bool;
+    plant_entities: [MAX_PLANTS_PER_GARDEN]Entity;
+
+    ao_start :: method() {
+        this.set_listener(this);
+        this.set_text("Plant Seed");
+        this.required_hold_time = 0.15;
+    }
+
+    can_use :: method(player: Player) -> bool {
+        p := player;
+        return owner_user_id == p.get_user_id();
+    }
+
+    on_interact :: method(player: Player) {
+        p := player;
+        if owner_user_id != p.get_user_id() return;
+        plant_selected_seed(p);
+    }
+
+    reset_for_leaving_player :: method() {
+        for i: 0..MAX_PLANTS_PER_GARDEN-1 {
+            if #alive(plant_entities[i]) { plant_entities[i].destroy(); }
+            plant_entities[i] = null;
+            occupied[i] = false;
+        }
+        owner_user_id = "";
+        owner_name = "";
+        plant_count = 0;
+    }
+
+    find_free_slot :: method() -> s64 {
+        for i: 0..MAX_PLANTS_PER_GARDEN-1 {
+            if !occupied[i] return i;
+        }
+        return -1;
+    }
+
+    slot_position :: method(slot: s64) -> v2 {
+        col := slot % 8;
+        row := slot / 8;
+        return entity.world_position + v2{(col.(float) - 3.5) * 0.72, (row.(float) - 2.0) * 0.72};
+    }
+
+    plant_selected_seed :: method(player: Player) {
+        if plant_count >= MAX_PLANTS_PER_GARDEN {
+            Notifier.notify(player, "Garden is full");
+            return;
+        }
+        seed_index := player.selected_seed;
+        if count_seed(player, seed_index) <= 0 {
+            Notifier.notify(player, "Buy that seed first");
+            return;
+        }
+        slot := find_free_slot();
+        if slot < 0 return;
+        if !remove_one_seed(player, seed_index) return;
+        occupied[slot] = true;
+        plant_count += 1;
+
+        e := Scene.create_entity();
+        e.set_name(format_string("Plant_%_%", {plot_index, slot}));
+        e.set_local_position(slot_position(slot));
+        e.set_local_scale({0.55, 0.55});
+        sr := e.add_component(Sprite_Renderer);
+        sr.set_texture(plant_icon);
+        sr.color = seed_def(seed_index).tint;
+        sr.layer = 1;
+        plant := e.add_component(Garden_Plant);
+        plant.owner_plot = this;
+        plant.slot_index = slot;
+        plant.seed_index = seed_index;
+        plant.planted_time = get_time();
+        plant.grow_seconds = seed_def(seed_index).grow_seconds;
+        plant.sell_value = seed_def(seed_index).sell_value;
+        plant_entities[slot] = e;
+        play_sfx_at(buy_sfx, entity, 0.25);
+    }
+}
+
+Garden_Plant :: class : Component {
+    owner_plot: Garden_Plot @ao_serialize;
+    slot_index: s64 @ao_serialize;
+    seed_index: s64 @ao_serialize;
+    planted_time: float @ao_serialize;
+    grow_seconds: float @ao_serialize;
+    sell_value: s64 @ao_serialize;
+    harvested: bool;
+
+    is_grown :: method() -> bool { return get_time() - planted_time >= grow_seconds; }
+    remaining_seconds :: method() -> float { return max(0.0, grow_seconds - (get_time() - planted_time)); }
+
+    ao_update :: method(dt: float) {
+        sr := entity.get_component(Sprite_Renderer);
+        if sr != null {
+            if is_grown() {
+                sr.color = seed_def(seed_index).tint;
+                entity.set_local_scale({0.9, 0.9});
+            } else {
+                sr.color = seed_def(seed_index).tint * v4{0.55, 0.55, 0.55, 1};
+            }
+        }
+    }
+
+    harvest_to_owner :: method(player: Player) -> bool {
+        if harvested || !is_grown() return false;
+        harvested = true;
+        Economy.deposit_currency(player, SCHLEEMS, sell_value);
+        if #alive(owner_plot) {
+            owner_plot.occupied[slot_index] = false;
+            owner_plot.plant_entities[slot_index] = null;
+            owner_plot.plant_count -= 1;
+        }
+        play_sfx_at(collect_sfx, entity, 0.6);
+        entity.destroy();
+        return true;
+    }
+}
+
+Shop_Interactable :: class : Interactable {
+    shop_kind: s64 @ao_serialize;
+    ao_start :: method() {
+        this.set_listener(this);
+        if shop_kind == 0 { this.set_text("Seed Shop"); } else { this.set_text("Sell Plants"); }
+        this.required_hold_time = 0.1;
+    }
+    can_use :: method(player: Player) -> bool { return true; }
+    on_interact :: method(player: Player) {
+        if shop_kind == 0 {
+            buy_seed_for_player(player, player.selected_seed);
+            player.show_seed_shop = true;
+        } else {
+            sell_all_grown(player);
+            player.show_sell_shop = true;
+        }
+    }
+}
+
+assign_player_plot :: proc(player: Player) {
+    if #alive(player.owned_plot) return;
+    for plot: component_iterator(Garden_Plot) {
+        if plot.owner_user_id.count == 0 {
+            plot.owner_user_id = player.get_user_id();
+            plot.owner_name = player.get_username();
+            player.owned_plot = plot;
+            player.entity.set_local_position(plot.entity.world_position + v2{0, -4.2});
+            player.entity.mark_teleported();
+            return;
+        }
+    }
+}
+
+sell_all_grown :: proc(player: Player) {
+    if !#alive(player.owned_plot) return;
+    sold: s64 = 0;
+    for i: 0..MAX_PLANTS_PER_GARDEN-1 {
+        e := player.owned_plot.plant_entities[i];
+        if !#alive(e) continue;
+        plant := e.get_component(Garden_Plant);
+        if plant == null continue;
+        if plant.harvest_to_owner(player) { sold += 1; }
+    }
+    if sold == 0 { Notifier.notify(player, "No grown plants yet"); }
+    else { player.sell_burst_until = get_time() + 1.0; }
+}
+
+teleport_to_seed_shop :: proc(player: Player) {
+    shop := Scene.get_entity_by_name("Seed_Shop");
+    if #alive(shop) {
+        player.entity.set_local_position(shop.world_position + v2{0, -1.8});
+        player.entity.mark_teleported();
+    }
+}
+
+teleport_to_sell_shop :: proc(player: Player) {
+    shop := Scene.get_entity_by_name("Sell_Shop");
+    if #alive(shop) {
+        player.entity.set_local_position(shop.world_position + v2{0, -1.8});
+        player.entity.mark_teleported();
+    }
+}
+
+teleport_to_garden :: proc(player: Player) {
+    if #alive(player.owned_plot) {
+        player.entity.set_local_position(player.owned_plot.entity.world_position + v2{0, -4.2});
+        player.entity.mark_teleported();
+    }
+}
+
+
+

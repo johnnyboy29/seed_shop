@@ -1,0 +1,85 @@
+draw_player_hud :: proc(player: Player) {
+    UIK.begin(UIK.window(UIK.rect_topbar()));
+    bar := UIK.layout_row();
+    bar.width = UIK.flex(1); bar.height = UIK.flex(1); bar.padding = v4{8, 16, 8, 16}; bar.gap = 8; bar.cross_align = .CENTER;
+    UIK.panel_begin(bar);
+    UIK.currency(coin_icon, Economy.get_balance(player, SCHLEEMS), UIK.text_title());
+    UIK.spacer(UIK.flex(1), UIK.pixels(1));
+    d := seed_def(player.selected_seed);
+    UIK.text(format_string("Selected: % x%", {d.name, count_seed(player, player.selected_seed)}), UIK.text_body());
+    shop_d := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN); shop_d.panel.width = UIK.pixels(145); shop_d.panel.height = UIK.pixels(70);
+    seed_btn := UIK.button("tp_seed_shop", "Seeds", shop_d);
+    sell_d := UIK.widget_desc_button_default(.BUTTON_BASIC_YELLOW1); sell_d.panel.width = UIK.pixels(130); sell_d.panel.height = UIK.pixels(70);
+    sell_btn := UIK.button("tp_sell_shop", "Sell", sell_d);
+    home_d := UIK.widget_desc_button_default(.BUTTON_BASIC_BLUE); home_d.panel.width = UIK.pixels(145); home_d.panel.height = UIK.pixels(70);
+    home_btn := UIK.button("tp_garden", "Garden", home_d);
+    UIK.panel_end();
+    UIK.end();
+    if UIK.clicked(seed_btn) { teleport_to_seed_shop(player); player.show_seed_shop = true; }
+    if UIK.clicked(sell_btn) { teleport_to_sell_shop(player); player.show_sell_shop = true; }
+    if UIK.clicked(home_btn) { teleport_to_garden(player); }
+}
+
+draw_seed_shop :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_large(), 12));
+    shell := UIK.panel_modal(.BROWN); shell.padding = v4{14,14,14,14}; shell.gap = 8; UIK.panel_begin(shell);
+    exit := UIK.title_area(UIK.title_area_desc("Seed Shop"));
+    content := UIK.layout_column(); content.width = UIK.flex(1); content.height = UIK.flex(1); content.gap = 6; UIK.list_begin("seed_shop_scroll", content);
+    handles: [SEED_COUNT]UIK.Interact_Handle;
+    select_handles: [SEED_COUNT]UIK.Interact_Handle;
+    for i: 0..SEED_COUNT-1 {
+        row := UIK.panel_interior(.INSET); row.width = UIK.flex(1); row.height = UIK.pixels(86); row.padding = v4{8,8,8,8}; row.gap = 8; row.axis = .HORIZONTAL; row.cross_align = .CENTER; UIK.panel_begin(row);
+        d := seed_def(i);
+        UIK.image_fitted(seed_icon, UIK.image_desc(.CONTAIN), d.tint);
+        UIK.text(format_string("%  %", {d.name, rarity_label(d.rarity)}), UIK.text_body());
+        UIK.spacer(UIK.flex(1), UIK.pixels(1));
+        UIK.currency(coin_icon, d.price, UIK.text_body());
+        sd := UIK.widget_desc_button_default(.BUTTON_BASIC_BLUE); sd.panel.width = UIK.pixels(105); sd.panel.height = UIK.pixels(58);
+        select_handles[i] = UIK.button(format_string("select_seed_%", {i}), "Pick", sd);
+        bd := UIK.widget_desc_button_default(.BUTTON_BASIC_GREEN); bd.panel.width = UIK.pixels(105); bd.panel.height = UIK.pixels(58);
+        handles[i] = UIK.button(format_string("buy_seed_%", {i}), "Buy", bd);
+        UIK.panel_end();
+    }
+    UIK.list_end(); UIK.panel_end(); UIK.end();
+    if UIK.clicked(exit) { player.show_seed_shop = false; }
+    for i: 0..SEED_COUNT-1 {
+        if UIK.clicked(select_handles[i]) { player.selected_seed = i; }
+        if UIK.clicked(handles[i]) { buy_seed_for_player(player, i); player.selected_seed = i; }
+    }
+}
+
+draw_sell_shop :: proc(player: Player) {
+    UIK.begin(UIK.modal(UIK.rect_window_small(), 15));
+    shell := UIK.panel_modal(.BLUE_WITH_FOOTER); shell.padding = v4{18,18,18,18}; shell.gap = 12; UIK.panel_begin(shell);
+    exit := UIK.title_area(UIK.title_area_desc("Sell Shop"));
+    UIK.text("Sell every grown plant in your garden.", UIK.text_body());
+    bd := UIK.widget_desc_button_default(.BUTTON_BASIC_YELLOW1); bd.panel.width = UIK.flex(1); bd.panel.height = UIK.pixels(95);
+    sell_btn := UIK.button("sell_all_grown", "Sell Grown Plants", bd);
+    UIK.panel_end(); UIK.end();
+    if UIK.clicked(exit) { player.show_sell_shop = false; }
+    if UIK.clicked(sell_btn) { sell_all_grown(player); }
+}
+
+draw_garden_timers :: proc(player: Player) {
+    UI.push_world_draw_context();
+    defer UI.pop_draw_context();
+    ts := UI.default_text_settings(); ts.size = 24;
+    for plant: component_iterator(Garden_Plant) {
+        if !#alive(plant.owner_plot) continue;
+        if plant.owner_plot.owner_user_id != player.get_user_id() continue;
+        pos := plant.entity.world_position + v2{0, 0.8};
+        rect := Rect{pos, pos}.grow(0.55, 0.55, 0.20, 0.20);
+        if plant.is_grown() { UI.text(rect, ts, "Ready!"); }
+        else {
+            rem := plant.remaining_seconds();
+            mins := (rem / 60.0).(s64);
+            secs := (rem - mins.(float) * 60.0).(s64);
+            UI.text(rect, ts, format_string("%m %s", {mins, secs}));
+        }
+    }
+    if player.sell_burst_until > get_time() {
+        pos := player.entity.world_position + v2{0, 1.4};
+        rect := Rect{pos, pos}.grow(1.2, 1.2, 0.35, 0.35);
+        UI.text(rect, ts, "+Schleems!");
+    }
+}
